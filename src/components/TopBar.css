@@ -1,0 +1,66 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  height: 48px;
+  background: #1c1c1c;
+  border-bottom: 1px solid #2e2e2e;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.topbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #4ade80;
+  margin-right: 32px;
+  letter-spacing: 0.5px;
+}
+
+.topbar-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.topbar-nav button {
+  background: none;
+  border: none;
+  color: #888888;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: none;
+}
+
+.topbar-nav button:hover {
+  color: #cccccc;
+  background: #2e2e2e;
+}
+
+.topbar-nav button.active {
+  color: #ffffff;
+  background: #2e2e2e;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
+.topbar-about {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: none;
+}
+
+.topbar-about:hover {
+  color: #4ade80;
+  background: #2e2e2e;
+}

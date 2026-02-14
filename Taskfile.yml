@@ -1,0 +1,79 @@
+version: "3"
+
+vars:
+  APP_NAME: bypass
+
+tasks:
+  install:
+    desc: Install frontend dependencies
+    cmds:
+      - pnpm install
+
+  dev:
+    desc: Run Tauri app in development mode
+    cmds:
+      - pnpm tauri dev
+
+  build:
+    desc: Build the Tauri app for production
+    cmds:
+      - pnpm tauri build
+
+  build:debug:
+    desc: Build the Tauri app in debug mode
+    cmds:
+      - pnpm tauri build --debug
+
+  clean:
+    desc: Clean build artifacts (frontend and Rust)
+    cmds:
+      - rm -rf dist
+      - cd src-tauri && cargo clean
+
+  clean:frontend:
+    desc: Clean only frontend build artifacts
+    cmds:
+      - rm -rf dist
+
+  clean:rust:
+    desc: Clean only Rust build artifacts
+    cmds:
+      - cd src-tauri && cargo clean
+
+  lint:
+    desc: Run TypeScript type checking
+    cmds:
+      - pnpm tsc --noEmit
+
+  fmt:
+    desc: Format Rust code
+    cmds:
+      - cd src-tauri && cargo fmt
+
+  fmt:check:
+    desc: Check Rust code formatting
+    cmds:
+      - cd src-tauri && cargo fmt --check
+
+  clippy:
+    desc: Run Clippy linter on Rust code
+    cmds:
+      - cd src-tauri && cargo clippy -- -D warnings
+
+  check:
+    desc: Run all checks (lint + fmt + clippy)
+    deps:
+      - lint
+      - fmt:check
+      - clippy
+
+  update:
+    desc: Update frontend and Rust dependencies
+    cmds:
+      - pnpm update
+      - cd src-tauri && cargo update
+
+  icons:
+    desc: Generate app icons from a source image
+    cmds:
+      - pnpm tauri icon {{.CLI_ARGS}}

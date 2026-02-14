@@ -1,0 +1,79 @@
+.about-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.about-modal {
+  background: #1c1c1c;
+  border: 1px solid #2e2e2e;
+  border-radius: 12px;
+  padding: 32px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 280px;
+}
+
+.about-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.5px;
+}
+
+.about-version {
+  font-size: 13px;
+  color: #888;
+}
+
+.about-desc {
+  font-size: 13px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.about-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: none;
+  transition: color 0.15s;
+  margin-bottom: 12px;
+}
+
+.about-link:hover {
+  color: #93c5fd;
+}
+
+.about-github-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.about-close {
+  background: #2e2e2e;
+  border: none;
+  color: #ccc;
+  padding: 6px 24px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s;
+}
+
+.about-close:hover {
+  background: #3d3d3d;
+}

@@ -1,0 +1,246 @@
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: #191919;
+  border-right: 1px solid #2e2e2e;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #2e2e2e;
+}
+
+.sidebar-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888888;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.sidebar-add-wrap {
+  position: relative;
+}
+
+.sidebar-add {
+  background: #2e2e2e;
+  border: none;
+  color: #4ade80;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.sidebar-add:hover {
+  background: #3d3d3d;
+}
+
+.sidebar-add-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #252525;
+  border: 1px solid #3d3d3d;
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 10;
+  min-width: 100px;
+}
+
+.sidebar-add-menu button {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 13px;
+  padding: 8px 14px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.sidebar-add-menu button:hover {
+  background: #3d3d3d;
+  color: #4ade80;
+}
+
+.sidebar-add-menu button + button {
+  border-top: 1px solid #3d3d3d;
+}
+
+.sidebar-new {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #2e2e2e;
+}
+
+.sidebar-new input {
+  flex: 1;
+  background: #111111;
+  border: 1px solid #2e2e2e;
+  border-radius: 4px;
+  color: #eee;
+  padding: 4px 8px;
+  font-size: 13px;
+  outline: none;
+  box-shadow: none;
+}
+
+.sidebar-new input:focus {
+  border-color: #4ade80;
+}
+
+.sidebar-new button {
+  background: #4ade80;
+  border: none;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sidebar-item:hover {
+  background: #252525;
+}
+
+.sidebar-item.selected {
+  background: #2e2e2e;
+}
+
+.sidebar-item-name {
+  flex: 1;
+  font-size: 14px;
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-export,
+.sidebar-delete {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: none;
+}
+
+.sidebar-item:hover .sidebar-export,
+.sidebar-item:hover .sidebar-delete {
+  opacity: 1;
+}
+
+.sidebar-export {
+  font-size: 14px;
+}
+
+.sidebar-export:hover {
+  color: #4ade80;
+}
+
+.sidebar-delete:hover {
+  color: #ff4466;
+}
+
+.sidebar-item-system {
+  border-bottom: 1px solid #2e2e2e;
+}
+
+.sidebar-item-icon {
+  font-size: 14px;
+  color: #4ade80;
+  flex-shrink: 0;
+}
+
+.sidebar-empty {
+  padding: 24px 14px;
+  color: #555;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Toggle switch */
+.sidebar-toggle {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.sidebar-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #333;
+  border-radius: 9px;
+  transition: 0.2s;
+}
+
+.toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 2px;
+  bottom: 2px;
+  background: #888;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.sidebar-toggle input:checked + .toggle-slider {
+  background: #4ade80;
+}
+
+.sidebar-toggle input:checked + .toggle-slider::before {
+  transform: translateX(14px);
+  background: #fff;
+}

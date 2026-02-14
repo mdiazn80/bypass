@@ -1,0 +1,49 @@
+{
+  "fill" : {
+    "linear-gradient" : [
+      "srgb:0.97113,0.97509,1.00000,1.00000",
+      "srgb:0.92521,1.00000,0.97167,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "image-name" : "Captura_de_pantalla_2026-02-15_a_las_0.21.39-removebg-preview.png",
+          "name" : "Captura_de_pantalla_2026-02-15_a_las_0.21.39-removebg-preview",
+          "position" : {
+            "scale" : 2,
+            "translation-in-points" : [
+              -5,
+              -141.6640625
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}
