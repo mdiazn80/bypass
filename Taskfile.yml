@@ -78,6 +78,38 @@ tasks:
     cmds:
       - pnpm tauri icon {{.CLI_ARGS}}
 
+  keys:generate:
+    desc: Generate new Tauri updater signing keys (saved to ~/.tauri/)
+    cmds:
+      - |
+        mkdir -p .tauri
+        echo ""
+        echo "Generating new Tauri signing keys..."
+        echo "You will be asked for a password. Use an EMPTY password (just press Enter twice) to avoid CI issues."
+        echo ""
+        pnpm tauri signer generate -w .tauri/bypass.key
+        echo ""
+        echo "Keys saved to:"
+        echo "  Private: .tauri/bypass.key"
+        echo "  Public:  .tauri/bypass.key.pub"
+
+  keys:apply:
+    desc: Apply public key from .tauri/bypass.key.pub to tauri.conf.json
+    cmds:
+      - |
+        PUBKEY=$(cat .tauri/bypass.key.pub)
+        node -e "
+          const fs = require('fs');
+          const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+          conf.plugins.updater.pubkey = '$PUBKEY';
+          fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+        "
+        echo "Public key applied to src-tauri/tauri.conf.json"
+        echo ""
+        echo "Now update your GitHub secrets:"
+        echo "  TAURI_SIGNING_PRIVATE_KEY = contents of .tauri/bypass.key"
+        echo "  TAURI_SIGNING_PRIVATE_KEY_PASSWORD = the password you used (empty string if none)"
+
   version:patch:
     desc: Bump patch version (0.1.0 → 0.1.1)
     cmds:
