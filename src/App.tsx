@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { check } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
 import TopBar, { type View } from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import ContextEditor from "./components/ContextEditor";
@@ -10,6 +12,23 @@ import { useContextStore } from "./stores/useContextStore";
 import { useConfigStore } from "./stores/useConfigStore";
 import "./App.css";
 
+async function checkForUpdates() {
+  try {
+    const update = await check();
+    if (update?.available) {
+      const confirmed = window.confirm(
+        `A new version (${update.version}) is available. Update now?`
+      );
+      if (confirmed) {
+        await update.downloadAndInstall();
+        await relaunch();
+      }
+    }
+  } catch {
+    // silently ignore update check failures
+  }
+}
+
 function App() {
   const [view, setView] = useState<View>("contexts");
   const [showAbout, setShowAbout] = useState(false);
@@ -19,6 +38,7 @@ function App() {
   useEffect(() => {
     loadContexts();
     loadConfig();
+    checkForUpdates();
 
     const unlistenContexts = listen("contexts-changed", () => {
       loadContexts();

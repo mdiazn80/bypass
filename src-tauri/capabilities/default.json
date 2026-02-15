@@ -13,6 +13,8 @@
     "core:event:default",
     "autostart:default",
     "dialog:default",
-    "fs:default"
+    "fs:default",
+    "updater:default",
+    "process:default"
   ]
 }

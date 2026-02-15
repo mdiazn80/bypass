@@ -77,3 +77,36 @@ tasks:
     desc: Generate app icons from a source image
     cmds:
       - pnpm tauri icon {{.CLI_ARGS}}
+
+  version:patch:
+    desc: Bump patch version (0.1.0 → 0.1.1)
+    cmds:
+      - |
+        CURRENT=$(node -p "require('./package.json').version")
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+        NEW="$MAJOR.$MINOR.$((PATCH + 1))"
+        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version='$NEW'; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(p,null,2)+'\n')"
+        echo "Version bumped: $CURRENT → $NEW"
+
+  version:minor:
+    desc: Bump minor version (0.1.0 → 0.2.0)
+    cmds:
+      - |
+        CURRENT=$(node -p "require('./package.json').version")
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+        NEW="$MAJOR.$((MINOR + 1)).0"
+        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version='$NEW'; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(p,null,2)+'\n')"
+        echo "Version bumped: $CURRENT → $NEW"
+
+  version:major:
+    desc: Bump major version (0.1.0 → 1.0.0)
+    cmds:
+      - |
+        CURRENT=$(node -p "require('./package.json').version")
+        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+        NEW="$((MAJOR + 1)).0.0"
+        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version='$NEW'; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(p,null,2)+'\n')"
+        echo "Version bumped: $CURRENT → $NEW"

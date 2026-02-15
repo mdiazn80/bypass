@@ -20,6 +20,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
@@ -31,18 +33,36 @@ pub fn run() {
         .setup(|app| {
             tray::create_tray(app.handle())?;
 
+            let window = app.get_webview_window("main").unwrap();
+
+            // Start minimized: hide window and dock icon, only show in menu bar
+            let should_start_minimized = {
+                let state = app.state::<AppState>();
+                let config = state.config.lock().unwrap();
+                config.start_minimized
+            };
+            if should_start_minimized {
+                window.hide().ok();
+                #[cfg(target_os = "macos")]
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+
             // Hide window on close if minimize_to_tray is enabled
             let handle = app.handle().clone();
-            let window = app.get_webview_window("main").unwrap();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    let state = handle.state::<AppState>();
-                    let config = state.config.lock().unwrap();
-                    if config.minimize_to_tray {
+                    let should_minimize = {
+                        let state = handle.state::<AppState>();
+                        let config = state.config.lock().unwrap();
+                        config.minimize_to_tray
+                    };
+                    if should_minimize {
                         api.prevent_close();
                         if let Some(win) = handle.get_webview_window("main") {
                             win.hide().ok();
                         }
+                        #[cfg(target_os = "macos")]
+                        let _ = handle.set_activation_policy(tauri::ActivationPolicy::Accessory);
                     }
                 }
             });

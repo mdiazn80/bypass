@@ -11,15 +11,20 @@ pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .menu(&menu)
         .tooltip("Bypass - Hosts Manager")
         .icon(app.default_window_icon().unwrap().clone())
+        .icon_as_template(true)
         .on_menu_event(move |app, event| {
             let id = event.id().as_ref();
 
             if id == "open" {
+                #[cfg(target_os = "macos")]
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
                 if let Some(window) = app.get_webview_window("main") {
                     window.show().ok();
                     window.set_focus().ok();
                 }
             } else if id == "about" {
+                #[cfg(target_os = "macos")]
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
                 if let Some(window) = app.get_webview_window("main") {
                     window.show().ok();
                     window.set_focus().ok();
