@@ -37,7 +37,7 @@ fi
 
 pnpm install --frozen-lockfile
 # Solo RPM en entorno dnf (evita intentar .deb/AppImage de "targets": "all").
-pnpm tauri build -- --bundles rpm
+pnpm exec tauri build --bundles rpm
 
 mkdir -p dist
 shopt -s nullglob
