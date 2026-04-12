@@ -2,12 +2,14 @@ version: "3"
 
 vars:
   APP_NAME: bypass
+  PKG_MGR: pnpm
 
 tasks:
   install:
     desc: Install frontend dependencies
     cmds:
-      - pnpm install
+      - echo "Installing desktop dependencies (pnpm)..."
+      - "{{.PKG_MGR}} install"
 
   dev:
     desc: Run Tauri app in development mode
@@ -23,6 +25,40 @@ tasks:
     desc: Build the Tauri app in debug mode
     cmds:
       - pnpm tauri build --debug
+
+  build:
+    desc: Tauri release for this host OS (dispatches by OS)
+    cmds:
+      - bash scripts/build-dispatch.sh "{{OS}}" "{{ARCH}}"
+
+  build:macos:
+    desc: Tauri release on macOS Apple Silicon
+    preconditions:
+      - sh: 'test "{{OS}}" = "darwin"'
+        msg: Run on macOS only.
+      - sh: 'test "{{ARCH}}" = "arm64"'
+        msg: Only Apple Silicon (arm64) is supported for this desktop build on macOS.
+    cmds:
+      - echo "Building desktop Tauri release on macOS (arm64)..."
+      - "{{.PKG_MGR}} tauri build"
+
+  build:linux:
+    desc: Tauri release on Linux only
+    preconditions:
+      - sh: 'test "{{OS}}" = "linux"'
+        msg: Run this task on Linux only (native).
+    cmds:
+      - echo "Building desktop Tauri release on Linux..."
+      - "{{.PKG_MGR}} tauri build"
+
+  build:windows:
+    desc: Tauri release on Windows only
+    preconditions:
+      - sh: 'test "{{OS}}" = "windows"'
+        msg: Run this task on Windows only (native). Use Git Bash if preconditions fail.
+    cmds:
+      - echo "Building desktop Tauri release on Windows..."
+      - "{{.PKG_MGR}} tauri build"
 
   clean:
     desc: Clean build artifacts (frontend and Rust)
@@ -109,36 +145,3 @@ tasks:
         echo "Now update your GitHub secrets:"
         echo "  TAURI_SIGNING_PRIVATE_KEY = contents of .tauri/bypass.key"
         echo "  TAURI_SIGNING_PRIVATE_KEY_PASSWORD = the password you used (empty string if none)"
-
-  version:patch:
-    desc: Bump patch version (0.1.0 → 0.1.1)
-    cmds:
-      - |
-        CURRENT=$(node -p "require('./package.json').version")
-        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-        NEW="$MAJOR.$MINOR.$((PATCH + 1))"
-        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
-        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version='$NEW'; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(p,null,2)+'\n')"
-        echo "Version bumped: $CURRENT → $NEW"
-
-  version:minor:
-    desc: Bump minor version (0.1.0 → 0.2.0)
-    cmds:
-      - |
-        CURRENT=$(node -p "require('./package.json').version")
-        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-        NEW="$MAJOR.$((MINOR + 1)).0"
-        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
-        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version='$NEW'; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(p,null,2)+'\n')"
-        echo "Version bumped: $CURRENT → $NEW"
-
-  version:major:
-    desc: Bump major version (0.1.0 → 1.0.0)
-    cmds:
-      - |
-        CURRENT=$(node -p "require('./package.json').version")
-        IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-        NEW="$((MAJOR + 1)).0.0"
-        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('package.json','utf8')); p.version='$NEW'; fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
-        node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); p.version='$NEW'; fs.writeFileSync('src-tauri/tauri.conf.json',JSON.stringify(p,null,2)+'\n')"
-        echo "Version bumped: $CURRENT → $NEW"
