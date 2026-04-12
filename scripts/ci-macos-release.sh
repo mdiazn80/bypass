@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Build Tauri DMG on macOS Apple Silicon. Copies the bundle to dist/bypass-macos-arm64.dmg.
-# Signing: if APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD and APPLE_SIGNING_IDENTITY are set
-# (Tauri env vars), `tauri build` signs the app; notarization is not used.
+# Signing: solo si APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD y APPLE_SIGNING_IDENTITY están
+# definidas y no vacías (Base64 del .p12, contraseña, identidad "Developer ID Application: …").
+# Si falta alguna, se usa --no-sign (evita que Tauri intente import con cadenas vacías y falle).
+# Notarización no se usa.
 # Run from repo root.
 set -euo pipefail
 
@@ -13,7 +15,15 @@ test "$(uname -s)" = "Darwin"
 test "$(uname -m)" = "arm64"
 
 pnpm install --frozen-lockfile
-pnpm exec tauri build --bundles dmg
+
+if [ -n "${APPLE_CERTIFICATE:-}" ] && [ -n "${APPLE_CERTIFICATE_PASSWORD:-}" ] && [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+  echo "Building with code signing (APPLE_* secrets present)."
+  pnpm exec tauri build --bundles dmg
+else
+  echo "Building without code signing (set all APPLE_* secrets to enable signing)."
+  unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY || true
+  pnpm exec tauri build --bundles dmg --no-sign
+fi
 
 mkdir -p dist
 shopt -s nullglob
