@@ -86,18 +86,25 @@ def bump_json_version_line(path: str) -> None:
 
 
 def bump_cargo_lock(path: str) -> None:
+    """Actualiza la línea version del paquete raíz bypass (Cargo.lock v3/v4)."""
     with open(path, encoding="utf-8") as f:
-        text = f.read()
-    text2, n = re.subn(
-        r'(\[\[package\]\]\nname = "bypass"\nversion = ")[^"]*(")',
-        rf"\1{ver}\2",
-        text,
-        count=1,
-    )
+        lines = f.readlines()
+    n = 0
+    i = 0
+    while i < len(lines) - 1:
+        if lines[i].strip() == 'name = "bypass"' and re.match(
+            r'^version = "[^"]*"\s*$', lines[i + 1].strip()
+        ):
+            lines[i + 1] = f'version = "{ver}"\n'
+            n += 1
+            break
+        i += 1
     if n != 1:
-        raise SystemExit(f"{path}: expected one [[package]] name=bypass version, matched {n}")
+        raise SystemExit(
+            f'{path}: expected exactly one `name = "bypass"` with a following version line, matched {n}'
+        )
     with open(path, "w", encoding="utf-8") as f:
-        f.write(text2)
+        f.writelines(lines)
 
 
 bump_cargo("src-tauri/Cargo.toml")
