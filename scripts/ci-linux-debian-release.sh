@@ -16,7 +16,7 @@ sudo apt-get install -y --no-install-recommends \
   libayatana-appindicator3-dev librsvg2-dev patchelf
 
 pnpm install --frozen-lockfile
-pnpm tauri build -- --bundles deb,appimage
+pnpm exec tauri build --bundles deb,appimage
 
 mkdir -p dist
 shopt -s nullglob

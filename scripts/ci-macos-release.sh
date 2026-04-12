@@ -13,7 +13,7 @@ test "$(uname -s)" = "Darwin"
 test "$(uname -m)" = "arm64"
 
 pnpm install --frozen-lockfile
-pnpm tauri build -- --bundles dmg
+pnpm exec tauri build --bundles dmg
 
 mkdir -p dist
 shopt -s nullglob

@@ -14,7 +14,7 @@ if [[ "${OS:-}" != "Windows_NT" && ! "${_sys}" =~ ^(MINGW|MSYS|CYGWIN) ]]; then
 fi
 
 pnpm install --frozen-lockfile
-pnpm tauri build -- --bundles nsis
+pnpm exec tauri build --bundles nsis
 
 mkdir -p dist
 shopt -s nullglob
