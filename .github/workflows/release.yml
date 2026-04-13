@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+# Acciones aún en Node 20 usan Node 24 en el runner hasta el cambio por defecto (junio 2026).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -24,7 +28,7 @@ jobs:
       tag_name: ${{ steps.meta.outputs.tag_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -71,18 +75,18 @@ jobs:
         shell: bash
     steps:
       - name: Checkout en el tag de release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag_name }}
           fetch-depth: 0
 
       - name: Instalar pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 9
 
       - name: Instalar Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -151,7 +155,7 @@ jobs:
           ls -la "$OUT"
 
       - name: Subir artefactos
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bypass-macos-${{ needs.tag.outputs.version }}
           path: release-assets-macos/*
@@ -167,18 +171,18 @@ jobs:
         shell: bash
     steps:
       - name: Checkout en el tag de release
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.tag.outputs.tag_name }}
           fetch-depth: 0
 
       - name: Instalar pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 9
 
       - name: Instalar Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: pnpm
@@ -247,7 +251,7 @@ jobs:
           ls -la "$OUT"
 
       - name: Subir artefactos
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bypass-windows-${{ needs.tag.outputs.version }}
           path: release-assets-windows/*
@@ -260,7 +264,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar artefactos
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: bypass-*
