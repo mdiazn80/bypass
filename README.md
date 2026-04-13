@@ -50,6 +50,25 @@ pnpm tauri build
 
 Binaries are generated in `src-tauri/target/release/bundle/`.
 
+### Taskfile
+
+If you use [Task](https://taskfile.dev/) (`go-task`), common commands are wrapped in `Taskfile.yml` at the repo root. Install Task, then run `task` or `task --list` to see all targets.
+
+| Task | Command | Description |
+|------|---------|-------------|
+| List tasks | `task` | Prints the same list as `task --list`. |
+| Install | `task install` | Runs `pnpm install`. |
+| Develop | `task dev` | Starts Vite and Tauri in dev mode (`pnpm tauri dev`). |
+| Build (release) | `task build` | Full `pnpm tauri build`. Requires `TAURI_SIGNING_PRIVATE_KEY` when `createUpdaterArtifacts` is enabled in `src-tauri/tauri.conf.json`. |
+| Build (local) | `task build:local` | Release build without code signing and without updater artifacts (`--no-sign` and `createUpdaterArtifacts: false` for that run). Use when you do not have signing keys locally. |
+| Frontend only | `task build:frontend` | Runs `pnpm build` (TypeScript + Vite); does not invoke Tauri. |
+| Preview | `task preview` | Serves the Vite production build (`pnpm preview`); no native shell. |
+| Clean | `task clean` | Deletes `dist/` and runs `cargo clean` for `src-tauri`. |
+| Clean all | `task clean:all` | Runs `task clean`, then removes `node_modules/`. |
+| Tauri info | `task info` | Runs `pnpm tauri info` (toolchain and environment summary). |
+
+The `clean` tasks use `rm -rf`; on Windows, use Git Bash, WSL, or run the equivalent commands in PowerShell.
+
 ## Project Structure
 
 ```
