@@ -4,7 +4,9 @@ name: Version tag and binary
 # Can also be run manually (Actions → Run workflow).
 #
 # Builds and uploads:
-# - macOS Apple Silicon (signed DMG, not notarized) — src-tauri/target/release/bundle/dmg/Bypass-arm64.dmg
+# - macOS Apple Silicon (signed + notarized DMG) — src-tauri/target/release/bundle/dmg/Bypass-arm64.dmg
+#   Notarización: APPLE_ID (email), APPLE_PASSWORD (contraseña específica de app, appleid.apple.com), APPLE_TEAM_ID.
+#   Certificado: Developer ID Application en el .p12 (Apple Development no sirve para notarizar distribución).
 # - Linux Debian/Ubuntu — dist/desktop-linux-debian-amd64.deb + .AppImage
 # - Linux Fedora/RHEL family — dist/desktop-linux-redhat-amd64.tar.gz
 # - Windows — dist/desktop-windows-amd64.zip
@@ -24,7 +26,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: version-tag-and-release-binaries-desktop-no-notarize
+  group: version-tag-and-release-binaries-desktop-notarize
   cancel-in-progress: false
 
 jobs:
@@ -49,7 +51,7 @@ jobs:
         run: bash scripts/ci-tag-version-push.sh
 
   build-macos-arm64:
-    name: Build & sign desktop (DMG, macOS Apple Silicon, no notarization)
+    name: Build, sign & notarize desktop (DMG, macOS Apple Silicon)
     needs: tag
     runs-on: macos-26
     env:
@@ -57,6 +59,9 @@ jobs:
       APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
@@ -86,7 +91,7 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Build, sign, normalize DMG
+      - name: Build, sign, notarize, normalize DMG
         run: bash scripts/ci-macos-release-signed-only.sh
 
       - name: Upload release asset
