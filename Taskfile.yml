@@ -1,147 +1,55 @@
 version: "3"
 
-vars:
-  APP_NAME: bypass
-  PKG_MGR: pnpm
-
 tasks:
-  install:
-    desc: Install frontend dependencies
+  default:
+    desc: Lista las tareas disponibles
+    silent: true
     cmds:
-      - echo "Installing desktop dependencies (pnpm)..."
-      - "{{.PKG_MGR}} install"
+      - task --list
+
+  install:
+    desc: Instala dependencias del frontend con pnpm
+    cmds:
+      - pnpm install
 
   dev:
-    desc: Run Tauri app in development mode
+    desc: Arranca la app en modo desarrollo (Vite + Tauri)
     cmds:
       - pnpm tauri dev
 
   build:
-    desc: Build the Tauri app for production
+    desc: Release completo (requiere TAURI_SIGNING_PRIVATE_KEY si createUpdaterArtifacts está activo)
     cmds:
       - pnpm tauri build
 
-  build:debug:
-    desc: Build the Tauri app in debug mode
+  build:local:
+    desc: Build local sin artefactos de updater ni code signing (evita TAURI_SIGNING_PRIVATE_KEY)
     cmds:
-      - pnpm tauri build --debug
+      - pnpm tauri build --no-sign -c '{"bundle":{"createUpdaterArtifacts":false}}'
 
-  build:
-    desc: Tauri release for this host OS (dispatches by OS)
+  build:frontend:
+    desc: Solo compila el frontend (tsc + vite build), sin empaquetar Tauri
     cmds:
-      - bash scripts/build-dispatch.sh "{{OS}}" "{{ARCH}}"
+      - pnpm build
 
-  build:macos:
-    desc: Tauri release on macOS Apple Silicon
-    preconditions:
-      - sh: 'test "{{OS}}" = "darwin"'
-        msg: Run on macOS only.
-      - sh: 'test "{{ARCH}}" = "arm64"'
-        msg: Only Apple Silicon (arm64) is supported for this desktop build on macOS.
+  preview:
+    desc: Sirve el build de Vite en local (sin ventana nativa de Tauri)
     cmds:
-      - echo "Building desktop Tauri release on macOS (arm64)..."
-      - "{{.PKG_MGR}} tauri build"
-
-  build:linux:
-    desc: Tauri release on Linux only
-    preconditions:
-      - sh: 'test "{{OS}}" = "linux"'
-        msg: Run this task on Linux only (native).
-    cmds:
-      - echo "Building desktop Tauri release on Linux..."
-      - "{{.PKG_MGR}} tauri build"
-
-  build:windows:
-    desc: Tauri release on Windows only
-    preconditions:
-      - sh: 'test "{{OS}}" = "windows"'
-        msg: Run this task on Windows only (native). Use Git Bash if preconditions fail.
-    cmds:
-      - echo "Building desktop Tauri release on Windows..."
-      - "{{.PKG_MGR}} tauri build"
+      - pnpm preview
 
   clean:
-    desc: Clean build artifacts (frontend and Rust)
+    desc: Borra dist del frontend y el target de Rust (cargo clean)
     cmds:
-      - rm -rf dist
-      - cd src-tauri && cargo clean
+      - rm -rf "{{.TASKFILE_DIR}}/dist"
+      - cargo clean --manifest-path "{{.TASKFILE_DIR}}/src-tauri/Cargo.toml"
 
-  clean:frontend:
-    desc: Clean only frontend build artifacts
+  clean:all:
+    desc: Limpia artefactos de compilación y node_modules
+    deps: [clean]
     cmds:
-      - rm -rf dist
+      - rm -rf "{{.TASKFILE_DIR}}/node_modules"
 
-  clean:rust:
-    desc: Clean only Rust build artifacts
+  info:
+    desc: Muestra el entorno detectado por el CLI de Tauri
     cmds:
-      - cd src-tauri && cargo clean
-
-  lint:
-    desc: Run TypeScript type checking
-    cmds:
-      - pnpm tsc --noEmit
-
-  fmt:
-    desc: Format Rust code
-    cmds:
-      - cd src-tauri && cargo fmt
-
-  fmt:check:
-    desc: Check Rust code formatting
-    cmds:
-      - cd src-tauri && cargo fmt --check
-
-  clippy:
-    desc: Run Clippy linter on Rust code
-    cmds:
-      - cd src-tauri && cargo clippy -- -D warnings
-
-  check:
-    desc: Run all checks (lint + fmt + clippy)
-    deps:
-      - lint
-      - fmt:check
-      - clippy
-
-  update:
-    desc: Update frontend and Rust dependencies
-    cmds:
-      - pnpm update
-      - cd src-tauri && cargo update
-
-  icons:
-    desc: Generate app icons from a source image
-    cmds:
-      - pnpm tauri icon {{.CLI_ARGS}}
-
-  keys:generate:
-    desc: Generate new Tauri updater signing keys (saved to ~/.tauri/)
-    cmds:
-      - |
-        mkdir -p .tauri
-        echo ""
-        echo "Generating new Tauri signing keys..."
-        echo "You will be asked for a password. Use an EMPTY password (just press Enter twice) to avoid CI issues."
-        echo ""
-        pnpm tauri signer generate -w .tauri/bypass.key
-        echo ""
-        echo "Keys saved to:"
-        echo "  Private: .tauri/bypass.key"
-        echo "  Public:  .tauri/bypass.key.pub"
-
-  keys:apply:
-    desc: Apply public key from .tauri/bypass.key.pub to tauri.conf.json
-    cmds:
-      - |
-        PUBKEY=$(cat .tauri/bypass.key.pub)
-        node -e "
-          const fs = require('fs');
-          const conf = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-          conf.plugins.updater.pubkey = '$PUBKEY';
-          fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
-        "
-        echo "Public key applied to src-tauri/tauri.conf.json"
-        echo ""
-        echo "Now update your GitHub secrets:"
-        echo "  TAURI_SIGNING_PRIVATE_KEY = contents of .tauri/bypass.key"
-        echo "  TAURI_SIGNING_PRIVATE_KEY_PASSWORD = the password you used (empty string if none)"
+      - pnpm tauri info

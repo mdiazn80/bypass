@@ -1,229 +1,279 @@
-name: Version tag and binary
+name: Release
 
-# Release id: YY.M.X (UTC). M is month 1–12 (one or two digits). X increments per release within that month and
-# resets when the month (or year) changes. Git tag, VERSION, src-tauri/Cargo.toml, tauri.conf.json, and package.json
-# use the same string.
-#
-# Runs when a pull request from branch `develop` into `main` is merged (after approval).
-# Can also be run manually (Actions → Run workflow).
-#
-# Builds and uploads:
-# - macOS Apple Silicon (DMG; opcionalmente firmado con certificado de desarrollador, sin notarización)
-# - Linux Debian/Ubuntu — dist/bypass-linux-debian-amd64.deb + .AppImage (separate assets; AppImage is much larger than .deb)
-# - Linux Fedora/RHEL family — dist/bypass-linux-redhat-amd64.tar.gz
-# - Windows — dist/bypass-windows-amd64.zip
-#
-# Shell logic lives in scripts/ at repo root.
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Solo validar VERSION; no crear tag, builds ni release"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: version-tag-and-release-binaries-bypass
+  group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   tag:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop')
+    name: Validar VERSION y crear tag
     runs-on: ubuntu-latest
     outputs:
-      tag: ${{ steps.version_tag.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      tag_name: ${{ steps.meta.outputs.tag_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.pull_request.merge_commit_sha }}
 
-      - name: Create and push tag
-        id: version_tag
-        env:
-          TZ: UTC
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: bash scripts/ci-tag-version-push.sh
+      - name: Leer y validar VERSION
+        id: meta
+        run: |
+          set -euo pipefail
+          RAW="$(tr -d ' \t\r\n' < VERSION)"
+          if [[ ! "$RAW" =~ ^[0-9]{2}\.([1-9]|1[0-2])\.[0-9]+$ ]]; then
+            echo "::error::VERSION debe cumplir YY.M.X (año 2 dígitos, mes 1-12 sin cero a la izquierda, secuencia numérica). Valor actual: '$RAW'"
+            exit 1
+          fi
+          TAG="v${RAW}"
+          echo "version=${RAW}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Versión: ${RAW} → tag ${TAG}"
 
-  build-macos-arm64:
-    name: Build bypass (DMG, macOS Apple Silicon)
+      - name: Comprobar que el tag no exista
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+          if git rev-parse "${{ steps.meta.outputs.tag_name }}" >/dev/null 2>&1; then
+            echo "::error::El tag ${{ steps.meta.outputs.tag_name }} ya existe. Incrementa la secuencia en VERSION."
+            exit 1
+          fi
+
+      - name: Crear y publicar tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.meta.outputs.tag_name }}" -m "Release ${{ steps.meta.outputs.version }}"
+          git push origin "${{ steps.meta.outputs.tag_name }}"
+
+  build-macos:
+    name: Build (macOS)
     needs: tag
-    runs-on: macos-26
-    env:
-      CI: true
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
-
-      - name: pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
-      - name: Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2.9.1
-        with:
-          workspaces: src-tauri
-
-      - name: Build and normalize DMG
-        run: bash scripts/ci-macos-release.sh
-
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: dist/bypass-macos-arm64.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-linux-debian:
-    name: Build bypass Linux (Debian/Ubuntu)
-    needs: tag
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
-
-      - name: pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
-      - name: Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2.9.1
-        with:
-          workspaces: src-tauri
-
-      - name: Package
-        run: bash scripts/ci-linux-debian-release.sh
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: |
-            dist/bypass-linux-debian-amd64.deb
-            dist/bypass-linux-debian-amd64.AppImage
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-linux-redhat:
-    name: Build bypass Linux (Fedora/RHEL family)
-    needs: tag
-    runs-on: ubuntu-latest
-    container:
-      image: fedora:40
+    if: ${{ !inputs.dry_run }}
+    runs-on: macos-latest
     defaults:
       run:
         shell: bash
     steps:
-      - name: Install git and curl
-        run: dnf install -y git ca-certificates curl
-
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Checkout en el tag de release
+        uses: actions/checkout@v4
         with:
+          ref: ${{ needs.tag.outputs.tag_name }}
           fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
 
-      - name: pnpm
-        uses: pnpm/action-setup@v5
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 9
 
-      - name: Node.js
-        uses: actions/setup-node@v6
+      - name: Instalar Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
 
-      - name: Rust toolchain
+      - name: Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Package
-        run: bash scripts/ci-linux-redhat-release.sh
-
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v3
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
         with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: dist/bypass-linux-redhat-amd64.tar.gz
+          workspaces: src-tauri
+
+      - name: Alinear versión desde VERSION
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("fs");
+          const v = fs.readFileSync("VERSION", "utf8").trim().replace(/\s+/g, "");
+          if (!/^\d{2}\.([1-9]|1[0-2])\.\d+$/.test(v)) {
+            console.error("VERSION inválida:", v);
+            process.exit(1);
+          }
+          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          pkg.version = v;
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          const tauriPath = "src-tauri/tauri.conf.json";
+          const tauri = JSON.parse(fs.readFileSync(tauriPath, "utf8"));
+          tauri.version = v;
+          fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + "\n");
+          let cargo = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
+          cargo = cargo.replace(/^version = "[^"]*"/m, `version = "${v}"`);
+          fs.writeFileSync("src-tauri/Cargo.toml", cargo);
+          console.log("Versión aplicada:", v);
+          NODE
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+            pnpm tauri build
+          else
+            echo "::warning::Secret TAURI_SIGNING_PRIVATE_KEY no definido; se omite firma de updater y code signing"
+            pnpm tauri build --no-sign -c '{"bundle":{"createUpdaterArtifacts":false}}'
+          fi
+
+      - name: Empaquetar artefactos del bundle
+        run: |
+          set -euo pipefail
+          OUT="release-assets-macos"
+          mkdir -p "$OUT"
+          shopt -s globstar nullglob || true
+          cp -R src-tauri/target/release/bundle/dmg/* "$OUT/" 2>/dev/null || true
+          cp -R src-tauri/target/release/bundle/macos/* "$OUT/" 2>/dev/null || true
+          cp src-tauri/target/release/bundle/**/*.sig "$OUT/" 2>/dev/null || true
+          if [[ -z "$(find "$OUT" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)" ]]; then
+            echo "::error::No se encontraron artefactos en $OUT"
+            find src-tauri/target/release/bundle -type f 2>/dev/null | head -50 || true
+            exit 1
+          fi
+          ls -la "$OUT"
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
+        with:
+          name: bypass-macos-${{ needs.tag.outputs.version }}
+          path: release-assets-macos/*
+          if-no-files-found: error
 
   build-windows:
-    name: Build bypass Windows
+    name: Build (Windows)
     needs: tag
+    if: ${{ !inputs.dry_run }}
     runs-on: windows-latest
     defaults:
       run:
         shell: bash
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Checkout en el tag de release
+        uses: actions/checkout@v4
         with:
+          ref: ${{ needs.tag.outputs.tag_name }}
           fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
 
-      - name: pnpm
-        uses: pnpm/action-setup@v5
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 9
 
-      - name: Node.js
-        uses: actions/setup-node@v6
+      - name: Instalar Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Rust toolchain
+      - name: Rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2.9.1
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
 
-      - name: Package
-        run: bash scripts/ci-windows-release.sh
+      - name: Alinear versión desde VERSION
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("fs");
+          const v = fs.readFileSync("VERSION", "utf8").trim().replace(/\s+/g, "");
+          if (!/^\d{2}\.([1-9]|1[0-2])\.\d+$/.test(v)) {
+            console.error("VERSION inválida:", v);
+            process.exit(1);
+          }
+          const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          pkg.version = v;
+          fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          const tauriPath = "src-tauri/tauri.conf.json";
+          const tauri = JSON.parse(fs.readFileSync(tauriPath, "utf8"));
+          tauri.version = v;
+          fs.writeFileSync(tauriPath, JSON.stringify(tauri, null, 2) + "\n");
+          let cargo = fs.readFileSync("src-tauri/Cargo.toml", "utf8");
+          cargo = cargo.replace(/^version = "[^"]*"/m, `version = "${v}"`);
+          fs.writeFileSync("src-tauri/Cargo.toml", cargo);
+          console.log("Versión aplicada:", v);
+          NODE
 
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v3
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
+            pnpm tauri build
+          else
+            echo "::warning::Secret TAURI_SIGNING_PRIVATE_KEY no definido; se omite firma de updater y code signing"
+            pnpm tauri build --no-sign -c '{"bundle":{"createUpdaterArtifacts":false}}'
+          fi
+
+      - name: Empaquetar artefactos del bundle
+        run: |
+          set -euo pipefail
+          OUT="release-assets-windows"
+          mkdir -p "$OUT"
+          shopt -s globstar nullglob || true
+          cp -R src-tauri/target/release/bundle/msi/* "$OUT/" 2>/dev/null || true
+          cp -R src-tauri/target/release/bundle/nsis/* "$OUT/" 2>/dev/null || true
+          cp src-tauri/target/release/bundle/**/*.sig "$OUT/" 2>/dev/null || true
+          if [[ -z "$(find "$OUT" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)" ]]; then
+            echo "::error::No se encontraron artefactos en $OUT"
+            find src-tauri/target/release/bundle -type f 2>/dev/null | head -50 || true
+            exit 1
+          fi
+          ls -la "$OUT"
+
+      - name: Subir artefactos
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: dist/bypass-windows-amd64.zip
+          name: bypass-windows-${{ needs.tag.outputs.version }}
+          path: release-assets-windows/*
+          if-no-files-found: error
+
+  publish:
+    name: Publicar GitHub Release
+    needs: [tag, build-macos, build-windows]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar artefactos
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: bypass-*
+          merge-multiple: true
+
+      - name: Crear release y adjuntar binarios
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.tag.outputs.tag_name }}
+          name: Bypass ${{ needs.tag.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
