@@ -9,6 +9,9 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 cd "${REPO_ROOT}"
 
+# shellcheck source=normalize-tauri-signing-env.sh
+source "${SCRIPT_DIR}/normalize-tauri-signing-env.sh"
+
 : "${APPLE_CERTIFICATE:?}"
 : "${APPLE_CERTIFICATE_PASSWORD:?}"
 : "${APPLE_SIGNING_IDENTITY:?}"

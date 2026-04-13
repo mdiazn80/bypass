@@ -7,6 +7,9 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 cd "${REPO_ROOT}"
 
+# shellcheck source=normalize-tauri-signing-env.sh
+source "${SCRIPT_DIR}/normalize-tauri-signing-env.sh"
+
 _sys=$(uname -s 2>/dev/null || true)
 if [[ "${OS:-}" != "Windows_NT" && ! "${_sys}" =~ ^(MINGW|MSYS|CYGWIN) ]]; then
   echo "ERROR = Run this script on Windows." >&2
