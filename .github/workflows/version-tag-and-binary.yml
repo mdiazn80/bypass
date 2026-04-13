@@ -1,0 +1,242 @@
+name: Version tag and binary
+
+# Runs when a pull request from branch `develop` into `main` is merged (after approval).
+# Can also be run manually (Actions → Run workflow).
+#
+# Builds and uploads:
+# - macOS Apple Silicon (signed DMG, not notarized) — src-tauri/target/release/bundle/dmg/Bypass-arm64.dmg
+# - Linux Debian/Ubuntu — dist/desktop-linux-debian-amd64.deb + .AppImage
+# - Linux Fedora/RHEL family — dist/desktop-linux-redhat-amd64.tar.gz
+# - Windows — dist/desktop-windows-amd64.zip
+#
+# If both this workflow and version-tag-and-binary.yml listen to the same merge event, tag jobs can race.
+# Keep only one of them wired to pull_request, or use workflow_dispatch exclusively here.
+#
+# Shell logic lives in scripts/ at repo root (see .cursor/rules/github-actions-scripts.mdc).
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-tag-and-release-binaries-desktop-no-notarize
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop')
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version_tag.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.pull_request.merge_commit_sha }}
+
+      - name: Create and push tag
+        id: version_tag
+        env:
+          TZ: UTC
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: bash scripts/ci-tag-version-push.sh
+
+  build-macos-arm64:
+    name: Build & sign desktop (DMG, macOS Apple Silicon, no notarization)
+    needs: tag
+    runs-on: macos-26
+    env:
+      CI: true
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.tag.outputs.tag }}
+
+      - name: pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2.9.1
+        with:
+          workspaces: src-tauri
+
+      - name: Build, sign, normalize DMG
+        run: bash scripts/ci-macos-release-signed-only.sh
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          files: 'src-tauri/target/release/bundle/dmg/Bypass-arm64.dmg'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux-debian:
+    name: Build desktop Linux (Debian/Ubuntu)
+    needs: tag
+    runs-on: ubuntu-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.tag.outputs.tag }}
+
+      - name: pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2.9.1
+        with:
+          workspaces: src-tauri
+
+      - name: Package
+        run: bash scripts/ci-linux-debian-release.sh
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          files: |
+            dist/desktop-linux-debian-amd64.deb
+            dist/desktop-linux-debian-amd64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-linux-redhat:
+    name: Build desktop Linux (Fedora/RHEL family)
+    needs: tag
+    runs-on: ubuntu-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    container:
+      image: fedora:40
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install git and curl
+        run: dnf install -y git ca-certificates curl
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.tag.outputs.tag }}
+
+      - name: pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Package
+        run: bash scripts/ci-linux-redhat-release.sh
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          files: dist/desktop-linux-redhat-amd64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    name: Build desktop Windows
+    needs: tag
+    runs-on: windows-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: refs/tags/${{ needs.tag.outputs.tag }}
+
+      - name: pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2.9.1
+        with:
+          workspaces: src-tauri
+
+      - name: Install protoc
+        run: choco install protoc -y
+
+      - name: Package
+        run: bash scripts/ci-windows-release.sh
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.tag.outputs.tag }}
+          files: dist/desktop-windows-amd64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
