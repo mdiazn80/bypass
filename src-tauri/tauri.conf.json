@@ -37,7 +37,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJGNDA2ODVCMUFGMDA4REUKUldUZUNQQWFXMmhBdjMrWXIxTFc4WlBnSUYvR1hVcWZ5d2FMVUhUZGcxOXVYUldVajRwdTdtamQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU0MjQzRkIwMjZDOERGNEYKUldSUDM4Z21zRDhrNUZyaFNkUkN0UFJlaFI1S0pRditTTk1xRnJ5NllTbnlaOVFmbDRoMFBEekgK",
       "endpoints": [
         "https://github.com/mdiazn80/bypass/releases/latest/download/latest.json"
       ]

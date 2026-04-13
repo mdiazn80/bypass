@@ -8,6 +8,9 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 cd "${REPO_ROOT}"
 
+# shellcheck source=normalize-tauri-signing-env.sh
+source "${SCRIPT_DIR}/normalize-tauri-signing-env.sh"
+
 if ! command -v pnpm >/dev/null 2>&1; then
   echo "ERROR = pnpm must be on PATH (use actions/setup-node + pnpm/action-setup in CI)." >&2
   exit 1
