@@ -1,0 +1,92 @@
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  height: 36px;
+  background: #1a2a1a;
+  border-top: 1px solid #2a5a2a;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+.update-banner--downloading,
+.update-banner--done {
+  justify-content: flex-start;
+}
+
+.update-banner-message {
+  font-size: 12px;
+  color: #a3d9a5;
+  white-space: nowrap;
+}
+
+.update-banner-message strong {
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.update-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.update-banner-btn {
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+  box-shadow: none;
+}
+
+.update-banner-btn--primary {
+  background: #4ade80;
+  color: #141414;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.update-banner-btn--primary:hover {
+  background: #6bef9a;
+}
+
+.update-banner-btn--dismiss {
+  background: transparent;
+  color: #666;
+  padding: 4px 7px;
+}
+
+.update-banner-btn--dismiss:hover {
+  color: #e0e0e0;
+}
+
+.update-banner-progress {
+  flex: 1;
+  max-width: 200px;
+  height: 4px;
+  background: #2e2e2e;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-left: 12px;
+}
+
+.update-banner-progress-bar {
+  height: 100%;
+  background: #4ade80;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.update-banner-percent {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  min-width: 30px;
+  text-align: right;
+}
