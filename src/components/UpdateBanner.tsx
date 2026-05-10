@@ -1,6 +1,6 @@
 import "./UpdateBanner.css";
 
-export type UpdatePhase = "available" | "downloading" | "done";
+export type UpdatePhase = "checking" | "up-to-date" | "available" | "downloading" | "done";
 
 export interface UpdateState {
   phase: UpdatePhase;
@@ -18,6 +18,29 @@ interface UpdateBannerProps {
 export default function UpdateBanner({ state, onInstall, onDismiss }: UpdateBannerProps) {
   const progress =
     state.total != null ? Math.round((state.downloaded / state.total) * 100) : null;
+
+  if (state.phase === "checking") {
+    return (
+      <div className="update-banner update-banner--checking">
+        <span className="update-banner-message">Checking for updates…</span>
+      </div>
+    );
+  }
+
+  if (state.phase === "up-to-date") {
+    return (
+      <div className="update-banner update-banner--up-to-date">
+        <span className="update-banner-message">You&apos;re up to date.</span>
+        <button
+          className="update-banner-btn update-banner-btn--dismiss"
+          onClick={onDismiss}
+          title="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
 
   if (state.phase === "done") {
     return (

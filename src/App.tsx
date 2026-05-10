@@ -21,30 +21,37 @@ function App() {
   const loadContexts = useContextStore((s) => s.load);
   const loadConfig = useConfigStore((s) => s.load);
 
+  async function runUpdateCheck(manual: boolean) {
+    if (manual) {
+      setUpdateState({ phase: "checking", version: "", downloaded: 0, total: null });
+    }
+    try {
+      const update = await check();
+      if (update?.available) {
+        pendingUpdate.current = update;
+        setUpdateState({ phase: "available", version: update.version, downloaded: 0, total: null });
+      } else if (manual) {
+        setUpdateState({ phase: "up-to-date", version: "", downloaded: 0, total: null });
+        setTimeout(() => setUpdateState(null), 4000);
+      }
+    } catch {
+      if (manual) setUpdateState(null);
+    }
+  }
+
   useEffect(() => {
     loadContexts();
     loadConfig();
-
-    check()
-      .then((update) => {
-        if (update?.available) {
-          pendingUpdate.current = update;
-          setUpdateState({
-            phase: "available",
-            version: update.version,
-            downloaded: 0,
-            total: null,
-          });
-        }
-      })
-      .catch(() => {});
+    runUpdateCheck(false);
 
     const unlistenContexts = listen("contexts-changed", () => loadContexts());
     const unlistenAbout = listen("show-about", () => setShowAbout(true));
+    const unlistenCheckUpdates = listen("check-for-updates", () => runUpdateCheck(true));
 
     return () => {
       unlistenContexts.then((fn) => fn());
       unlistenAbout.then((fn) => fn());
+      unlistenCheckUpdates.then((fn) => fn());
     };
   }, []);
 
