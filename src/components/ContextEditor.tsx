@@ -159,7 +159,7 @@ export default function ContextEditor() {
         <pre ref={highlightRef} className="editor-highlight" aria-hidden="true">
           {content
             ? highlightHosts(displayContent)
-            : <span className="hl-placeholder">{"# Add hosts entries, one per line\n# Example:\n# 192.168.1.1  mysite.local"}</span>
+            : <span className="hl-placeholder">{"# Add hosts entries, one per line\n# IPv4 example:\n# 192.168.1.1     mysite.local\n# IPv6 examples:\n# ::1             localhost\n# 2001:db8::1     myhost.local"}</span>
           }
         </pre>
         <textarea
