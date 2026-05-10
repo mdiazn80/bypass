@@ -12,9 +12,14 @@
   flex-shrink: 0;
 }
 
+.update-banner--checking,
 .update-banner--downloading,
 .update-banner--done {
   justify-content: flex-start;
+}
+
+.update-banner--up-to-date {
+  justify-content: space-between;
 }
 
 .update-banner-message {
