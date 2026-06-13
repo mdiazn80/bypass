@@ -1,7 +1,11 @@
+mod agent;
 mod biometric;
 mod commands;
+mod credentials;
 mod hosts;
 mod models;
+mod secrets;
+mod shell_install;
 mod state;
 mod storage;
 mod tray;
@@ -29,9 +33,29 @@ pub fn run() {
         .manage(AppState {
             contexts: Mutex::new(contexts),
             config: Mutex::new(config),
+            vault: Mutex::new(None),
+            agent: Mutex::new(None),
+            // Start at 1 so a client with no prior generation (0) always syncs.
+            gen: std::sync::atomic::AtomicU64::new(1),
         })
         .setup(|app| {
             tray::create_tray(app.handle())?;
+
+            // Start the shell agent if it was enabled in a previous session.
+            let shell_enabled = {
+                let state = app.state::<AppState>();
+                let config = state.config.lock().unwrap();
+                config.shell_integration_enabled
+            };
+            if shell_enabled {
+                match agent::start(app.handle().clone()) {
+                    Ok(handle) => {
+                        let state = app.state::<AppState>();
+                        *state.agent.lock().unwrap() = Some(handle);
+                    }
+                    Err(e) => eprintln!("failed to start shell agent: {e}"),
+                }
+            }
 
             let window = app.get_webview_window("main").unwrap();
 
@@ -75,13 +99,25 @@ pub fn run() {
             commands::update_context,
             commands::delete_context,
             commands::toggle_context,
-            commands::get_hosts_content,
             commands::get_system_hosts,
+            commands::read_file_text,
             commands::get_config,
             commands::update_config,
-            commands::apply_contexts,
             commands::check_biometric_available,
-            commands::authenticate_biometric,
+            commands::get_shell_status,
+            commands::set_active_context,
+            commands::set_shell_agent_enabled,
+            commands::install_shell_integration,
+            commands::uninstall_shell_integration,
+            credentials::list_credential_contexts,
+            credentials::create_credential_context,
+            credentials::update_credential_context,
+            credentials::rename_credential_context,
+            credentials::delete_credential_context,
+            credentials::list_credential_vars,
+            credentials::get_credential_var,
+            credentials::set_credential_var,
+            credentials::delete_credential_var,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

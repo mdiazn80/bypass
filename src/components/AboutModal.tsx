@@ -1,5 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useAppVersion } from "../hooks/useAppVersion";
+import logo from "../assets/logo.png";
 import "./AboutModal.css";
 
 interface AboutModalProps {
@@ -12,6 +13,7 @@ export default function AboutModal({ onClose }: AboutModalProps) {
   return (
     <div className="about-overlay" onClick={onClose}>
       <div className="about-modal" onClick={(e) => e.stopPropagation()}>
+        <img src={logo} alt="Bypass" className="about-logo" />
         <div className="about-title">Bypass</div>
         <div className="about-version">{version ? `v${version}` : "…"}</div>
         <div className="about-desc">A simple hosts file manager</div>

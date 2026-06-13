@@ -14,6 +14,15 @@ pub struct Context {
 pub struct AppConfig {
     pub minimize_to_tray: bool,
     pub start_minimized: bool,
+    /// Whether the local shell agent (socket listener) should run.
+    #[serde(default)]
+    pub shell_integration_enabled: bool,
+    /// Whether the prompt hook has been written into the user's shell rc.
+    #[serde(default)]
+    pub shell_integration_installed: bool,
+    /// Name of the credential context whose variables are served to shells.
+    #[serde(default)]
+    pub active_context: Option<String>,
 }
 
 impl Default for AppConfig {
@@ -21,6 +30,9 @@ impl Default for AppConfig {
         Self {
             minimize_to_tray: true,
             start_minimized: false,
+            shell_integration_enabled: false,
+            shell_integration_installed: false,
+            active_context: None,
         }
     }
 }

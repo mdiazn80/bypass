@@ -5,12 +5,15 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import TopBar, { type View } from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
 import ContextEditor from "./components/ContextEditor";
+import CredentialSidebar from "./components/CredentialSidebar";
+import CredentialEditor from "./components/CredentialEditor";
 import Settings from "./components/Settings";
 import AboutModal from "./components/AboutModal";
 import Footer from "./components/Footer";
 import UpdateBanner, { type UpdateState } from "./components/UpdateBanner";
 import { useContextStore } from "./stores/useContextStore";
 import { useConfigStore } from "./stores/useConfigStore";
+import { useCredentialStore } from "./stores/useCredentialStore";
 import "./App.css";
 
 function App() {
@@ -19,7 +22,12 @@ function App() {
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   const pendingUpdate = useRef<Update | null>(null);
   const loadContexts = useContextStore((s) => s.load);
+  const contextError = useContextStore((s) => s.error);
+  const clearContextError = useContextStore((s) => s.clearError);
   const loadConfig = useConfigStore((s) => s.load);
+  const loadCredentials = useCredentialStore((s) => s.load);
+  const credentialError = useCredentialStore((s) => s.error);
+  const clearCredentialError = useCredentialStore((s) => s.clearError);
 
   async function runUpdateCheck(manual: boolean) {
     if (manual) {
@@ -42,14 +50,13 @@ function App() {
   useEffect(() => {
     loadContexts();
     loadConfig();
+    loadCredentials();
     runUpdateCheck(false);
 
-    const unlistenContexts = listen("contexts-changed", () => loadContexts());
     const unlistenAbout = listen("show-about", () => setShowAbout(true));
     const unlistenCheckUpdates = listen("check-for-updates", () => runUpdateCheck(true));
 
     return () => {
-      unlistenContexts.then((fn) => fn());
       unlistenAbout.then((fn) => fn());
       unlistenCheckUpdates.then((fn) => fn());
     };
@@ -112,8 +119,26 @@ function App() {
             <ContextEditor />
           </>
         )}
+        {view === "credentials" && (
+          <>
+            <CredentialSidebar />
+            <CredentialEditor />
+          </>
+        )}
         {view === "settings" && <Settings />}
       </div>
+      {contextError && (
+        <div className="error-banner" role="alert">
+          <span className="error-banner-message">{contextError}</span>
+          <button className="error-banner-dismiss" onClick={clearContextError}>✕</button>
+        </div>
+      )}
+      {credentialError && (
+        <div className="error-banner" role="alert">
+          <span className="error-banner-message">{credentialError}</span>
+          <button className="error-banner-dismiss" onClick={clearCredentialError}>✕</button>
+        </div>
+      )}
       {updateState && (
         <UpdateBanner
           state={updateState}

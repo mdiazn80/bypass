@@ -1,0 +1,76 @@
+---
+description: TypeScript and React coding standards for the Bypass frontend
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript & React Standards
+
+## General
+
+- `strict: true` is enabled — no `any`, no type assertions without justification
+- Prefer `unknown` over `any` when the type is genuinely unknown
+- Remove unused variables and imports (enforced by `noUnusedLocals` / `noUnusedParameters`)
+
+## Error Handling
+
+Always surface errors to the user; never swallow them silently.
+
+```typescript
+// ❌ BAD
+async function load() {
+  const data = await invoke('get_contexts');
+  set({ contexts: data });
+}
+
+// ✅ GOOD
+async function load() {
+  try {
+    const data = await invoke<Context[]>('get_contexts');
+    set({ contexts: data });
+  } catch (err) {
+    console.error('Failed to load contexts', err);
+    // show toast or error state to the user
+  }
+}
+```
+
+## Zustand Stores
+
+- One store per domain (`useContextStore`, `useConfigStore`)
+- Keep stores flat; derive computed values with selectors
+- Always handle errors in async actions — update an `error` field in state
+
+## React Components
+
+- Functional components only
+- Extract reusable logic into custom hooks (`src/hooks/`)
+- Clean up `setTimeout` / `setInterval` in `useEffect` return functions
+
+```tsx
+// ❌ BAD — timer leak
+useEffect(() => {
+  setTimeout(() => save(), 500);
+}, [value]);
+
+// ✅ GOOD
+useEffect(() => {
+  const id = setTimeout(() => save(), 500);
+  return () => clearTimeout(id);
+}, [value]);
+```
+
+## Tauri IPC
+
+- All `invoke()` calls live exclusively in `src/services/tauri.ts`
+- Components and stores import from `tauri.ts`, never call `invoke()` directly
+- Type the return value: `invoke<ReturnType>('command_name', { arg })`
+
+## Dead Code
+
+- Do not leave unused components, exports or API wrappers in the codebase
+- Remove, don't comment out
+
+## State Sync
+
+When a store reloads data with the same selected ID, derived UI state (editors, forms) must react to the new content, not just the ID change.

@@ -24,10 +24,6 @@
   letter-spacing: 0.8px;
 }
 
-.sidebar-add-wrap {
-  position: relative;
-}
-
 .sidebar-add {
   background: #2e2e2e;
   border: none;
@@ -47,41 +43,6 @@
 
 .sidebar-add:hover {
   background: #3d3d3d;
-}
-
-.sidebar-add-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
-  background: #252525;
-  border: 1px solid #3d3d3d;
-  border-radius: 6px;
-  overflow: hidden;
-  z-index: 10;
-  min-width: 100px;
-}
-
-.sidebar-add-menu button {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  color: #ccc;
-  font-size: 13px;
-  padding: 8px 14px;
-  text-align: left;
-  cursor: pointer;
-  box-shadow: none;
-}
-
-.sidebar-add-menu button:hover {
-  background: #3d3d3d;
-  color: #4ade80;
-}
-
-.sidebar-add-menu button + button {
-  border-top: 1px solid #3d3d3d;
 }
 
 .sidebar-new {
@@ -110,7 +71,7 @@
 .sidebar-new button {
   background: #4ade80;
   border: none;
-  color: #fff;
+  color: #0a0a0a;
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 12px;
@@ -148,6 +109,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar-item-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
 }
 
 .sidebar-export,
@@ -197,13 +170,14 @@
   text-align: center;
 }
 
-/* Toggle switch */
+/* Toggle switch (shared by Hosts and Credentials, placed on the right) */
 .sidebar-toggle {
   position: relative;
   display: inline-block;
-  width: 32px;
-  height: 18px;
+  width: 40px;
+  height: 22px;
   flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .sidebar-toggle input {
@@ -227,8 +201,8 @@
 .toggle-slider::before {
   content: "";
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   left: 2px;
   bottom: 2px;
   background: #888;
@@ -238,9 +212,10 @@
 
 .sidebar-toggle input:checked + .toggle-slider {
   background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
 }
 
 .sidebar-toggle input:checked + .toggle-slider::before {
-  transform: translateX(14px);
+  transform: translateX(18px);
   background: #fff;
 }

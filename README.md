@@ -7,6 +7,7 @@ Bypass lets you create, organize and toggle groups of hosts entries (called **Co
 ## Features
 
 - **Contexts** &mdash; Group related hosts entries and toggle them on/off with a single click.
+- **Credential contexts** &mdash; Manage sensitive environment variables (API keys, tokens, connection strings) in an encrypted vault (OS keychain master key + ChaCha20-Poly1305 on-disk store).
 - **Syntax highlighting** &mdash; IPs, hostnames and comments are color-coded in the editor.
 - **System Hosts view** &mdash; Read-only preview of the current `/etc/hosts` file, auto-refreshed when contexts change.
 - **Import / Export** &mdash; Share contexts as JSON files using native OS file dialogs.
@@ -75,31 +76,42 @@ The `clean` tasks use `rm -rf`; on Windows, use Git Bash, WSL, or run the equiva
 bypass/
 ├── src/                        # Frontend (React + TypeScript)
 │   ├── components/
-│   │   ├── TopBar.tsx          # Navigation bar with About button
-│   │   ├── Sidebar.tsx         # Context list, toggle, import/export
+│   │   ├── TopBar.tsx          # Navigation: Hosts / Credentials / Settings
+│   │   ├── Sidebar.tsx         # Hosts context list, toggle, export
 │   │   ├── ContextEditor.tsx   # Hosts editor with syntax highlighting
+│   │   ├── FileDropZone.tsx    # Drag-and-drop file import for new contexts
+│   │   ├── CredentialSidebar.tsx  # Credential context list
+│   │   ├── CredentialEditor.tsx   # Key/value editor with masked values
 │   │   ├── Settings.tsx        # App settings (autostart, tray, etc.)
 │   │   ├── AboutModal.tsx      # About dialog
 │   │   └── Footer.tsx          # Version and GitHub link
 │   ├── stores/
-│   │   ├── useContextStore.ts  # Contexts state management (Zustand)
-│   │   └── useConfigStore.ts   # App config state management
+│   │   ├── useContextStore.ts     # Hosts contexts state (Zustand)
+│   │   ├── useCredentialStore.ts  # Credential contexts state (Zustand)
+│   │   └── useConfigStore.ts      # App config state
 │   └── services/
 │       └── tauri.ts            # Tauri IPC bindings
-├── src-tauri/                  # Backend (Rust)
+├── src-tauri/                  # Tauri app crate (Rust)
+│   ├── Cargo.toml              # Crate manifest
 │   ├── src/
 │   │   ├── lib.rs              # App setup and plugin registration
-│   │   ├── commands.rs         # Tauri commands (IPC handlers)
+│   │   ├── commands.rs         # Hosts/config Tauri commands
+│   │   ├── credentials.rs      # Credential vault Tauri commands
 │   │   ├── hosts.rs            # Hosts file read/write/merge logic
 │   │   ├── biometric.rs        # Touch ID authentication (macOS)
 │   │   ├── tray.rs             # System tray menu
 │   │   ├── models.rs           # Data models (Context, AppConfig)
 │   │   ├── storage.rs          # JSON file persistence
-│   │   └── state.rs            # Shared app state
+│   │   ├── state.rs            # Shared app state
+│   │   └── secrets/            # Encrypted credential vault
+│   │       ├── backend.rs      # SecretBackend trait + HybridBackend
+│   │       ├── crypto.rs       # ChaCha20-Poly1305 seal/open
+│   │       ├── keystore.rs     # OS keychain master key + env fallback
+│   │       └── vault.rs        # High-level API
 │   └── tauri.conf.json         # Tauri configuration
 └── .github/
     └── workflows/
-        └── release.yml         # CI: build binaries on merged PRs
+        └── version-tag-and-binary.yml  # CI: build binaries on merged PRs
 ```
 
 ## How It Works
@@ -123,9 +135,9 @@ bypass/
 ## Import / Export
 
 - **Export**: click the download arrow on any context in the sidebar. A native Save dialog lets you choose where to save the `.json` file.
-- **Import**: click the `+` button, then **Import**. A native Open dialog lets you pick a `.json` file (single context) or an array of contexts.
+- **Import**: click `+` to create a context, then drag a hosts-format file onto the drop zone (or click it to browse). The dropped file initializes the context content.
 
-JSON format:
+Export JSON format:
 
 ```json
 {
@@ -134,14 +146,30 @@ JSON format:
 }
 ```
 
+## Credential contexts
+
+Bypass can manage groups of sensitive environment variables (a *credential context*) without writing `.env` files or storing secrets in plaintext.
+
+### Storage (hybrid backend)
+
+- A random 32-byte master key is generated on first use and stored in the **OS keychain** (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows).
+- Contexts and variables are stored in an encrypted file (`store.enc`) next to the app data, sealed with **ChaCha20-Poly1305** using that master key.
+- Secret values are never written to disk in plaintext, and the master key never appears in the file.
+
+In the GUI, open the **Credentials** tab to create contexts and add/edit/delete variables (values are masked by default with a reveal toggle). You can initialize a context by dragging a `.env`-style file onto the drop zone; keys without a value are imported empty so you can fill them in manually.
+
+### Security notes
+
+- Secret values are never written to disk in plaintext, and the master key never appears in the encrypted store.
+- If the OS keychain is unavailable (e.g. headless Linux without a Secret Service), set `BYPASS_MASTER_KEY` to a base64-encoded 32-byte key and Bypass will use it instead of the keychain.
+
 ## CI / CD
 
-A GitHub Actions workflow (`.github/workflows/release.yml`) builds binaries automatically when a pull request to `main` is merged. It produces artifacts for:
+A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces artifacts for:
 
 | Platform | Architecture | Artifacts |
 |----------|-------------|-----------|
 | macOS    | ARM64       | `.dmg`, `.app` |
-| macOS    | x86_64      | `.dmg`, `.app` |
 | Linux    | x86_64      | `.deb`, `.AppImage` |
 | Windows  | x86_64      | `.exe` (NSIS), `.msi` |
 
@@ -149,6 +177,7 @@ A GitHub Actions workflow (`.github/workflows/release.yml`) builds binaries auto
 
 - **Frontend**: React 19, TypeScript, Zustand, Vite
 - **Backend**: Rust, Tauri 2
+- **Crypto**: ChaCha20-Poly1305, OS keychain (`keyring`)
 - **Plugins**: `tauri-plugin-dialog`, `tauri-plugin-fs`, `tauri-plugin-opener`, `tauri-plugin-autostart`
 
 ## License

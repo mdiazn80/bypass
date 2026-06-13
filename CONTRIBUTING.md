@@ -40,10 +40,18 @@ Artifacts are written under `src-tauri/target/release/bundle/`. For local builds
 
 ## Project layout
 
-- **`src/`**: React frontend, TypeScript, Zustand, Vite.  
-- **`src-tauri/`**: Rust backend and Tauri configuration (commands, hosts file read/write, tray, etc.).
+- **`src/`**: React frontend, TypeScript, Zustand, Vite.
+- **`src-tauri/`**: Tauri app crate (commands, hosts file read/write, tray, credential commands).
+- **`src-tauri/src/secrets/`**: encrypted credential vault (`SecretBackend` trait + `HybridBackend`, crypto, keystore).
 
-Before changing sensitive hosts-related behavior, review `src-tauri/src/hosts.rs` and the managed-block markers described in the README.
+Build and test the Rust crate with:
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml   # unit tests
+pnpm tauri dev                                     # the GUI
+```
+
+Before changing sensitive hosts-related behavior, review `src-tauri/src/hosts.rs` and the managed-block markers described in the README. Before changing credential storage, review `src-tauri/src/secrets/` (crypto, keystore, backend) and keep secret values out of logs.
 
 ## Style and quality
 
@@ -55,7 +63,7 @@ If your change touches security (privilege elevation, file I/O, IPC), describe t
 
 ## Pull requests
 
-1. Branch from `main`.  
+1. Branch from `develop`.  
 2. Keep changes focused (one feature or fix per PR when practical).  
 3. Update docs or comments only where your change requires it.  
 4. In the PR, explain what changed and how to test it (OS, manual steps if CI does not cover the case).

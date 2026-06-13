@@ -1,0 +1,62 @@
+---
+description: Bypass project architecture overview and conventions
+alwaysApply: true
+---
+
+# Project Architecture
+
+Bypass is a **Tauri 2 + React 19** desktop app that manages the system hosts file through named, toggleable context groups.
+
+## Layer Map
+
+```
+src/                         ← React frontend (TypeScript)
+  services/tauri.ts          ← ONLY place that calls invoke(); typed wrappers
+  stores/                    ← Zustand stores (one per domain)
+  components/                ← UI components
+  hooks/                     ← Reusable React hooks
+
+src-tauri/src/               ← Rust backend
+  commands.rs                ← Tauri IPC commands (thin; delegate to modules)
+  hosts.rs                   ← Hosts file read/write logic
+  storage.rs                 ← JSON persistence (~/.config/…)
+  models.rs                  ← Shared data types (Context, AppConfig)
+  state.rs                   ← AppState (Mutex-guarded in-memory state)
+  biometric.rs               ← macOS Touch ID (Swift scripts)
+  tray.rs                    ← System tray menu
+  lib.rs                     ← Plugin registration, window setup, command registration
+```
+
+## Data Flow
+
+```
+UI component
+  → Zustand store action
+    → services/tauri.ts (invoke)
+      → commands.rs
+        → hosts.rs / storage.rs / biometric.rs
+```
+
+## Key Conventions
+
+- **IPC boundary**: all cross-layer communication goes through `src/services/tauri.ts`; never call `invoke()` from components or stores directly.
+- **State ownership**: Rust owns the source of truth; the frontend stores are a cache that must be refreshed after mutations.
+- **Hosts block**: the managed section is delimited by `# BYPASS MANAGED START` / `# BYPASS MANAGED END`; never touch entries outside this block.
+- **Versioning**: `YY.M.PATCH` kept in sync across `VERSION`, `package.json`, `Cargo.toml`, `tauri.conf.json`.
+- **CI**: releases trigger from `develop` → `main`; the workflow file is `.github/workflows/version-tag-and-binary.yml`.
+
+## What Goes Where
+
+| Need | Location |
+|------|----------|
+| New Tauri command | `commands.rs` → register in `lib.rs` |
+| Hosts file logic | `hosts.rs` |
+| New data type | `models.rs` (Rust) + `src/types/index.ts` (TS) |
+| New UI feature | `src/components/` + store action if needed |
+| Reusable React logic | `src/hooks/` |
+| New IPC wrapper | `src/services/tauri.ts` |
+
+## Out of Scope
+
+- The app does **not** manage Docker, DNS resolvers, or VPN configs — only `/etc/hosts` (and OS equivalents).
+- No server-side component; the app is fully local.

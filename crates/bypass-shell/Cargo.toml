@@ -1,0 +1,14 @@
+[package]
+name = "bypass-shell"
+version = "26.5.3"
+description = "Bypass shell-integration client: talks to the local Bypass agent and emits shell code"
+edition = "2021"
+
+[[bin]]
+name = "bypass-shell"
+path = "src/main.rs"
+
+[dependencies]
+interprocess = "2"
+base64 = "0.22"
+dirs = "5"

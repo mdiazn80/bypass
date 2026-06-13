@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useContextStore, SYSTEM_HOSTS_ID } from "../stores/useContextStore";
+import FileDropZone from "./FileDropZone";
 import "./ContextEditor.css";
 
 export function highlightHosts(text: string): React.ReactNode[] {
@@ -57,16 +58,13 @@ export function highlightHosts(text: string): React.ReactNode[] {
   });
 }
 
-function highlightSystemHosts(text: string): React.ReactNode[] {
-  return highlightHosts(text);
-}
-
 export default function ContextEditor() {
   const { contexts, selectedId, update, systemHosts } = useContextStore();
   const selected = contexts.find((c) => c.id === selectedId);
   const [content, setContent] = useState("");
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
@@ -76,6 +74,12 @@ export default function ContextEditor() {
       setContent(selected.content);
       setName(selected.name);
     }
+    setManualMode(false);
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+      }
+    };
   }, [selectedId]);
 
   const syncScroll = useCallback(() => {
@@ -85,6 +89,16 @@ export default function ContextEditor() {
     }
   }, []);
 
+  const handleImportFile = useCallback(
+    (fileContent: string) => {
+      setContent(fileContent);
+      if (selectedId && selectedId !== SYSTEM_HOSTS_ID) {
+        update(selectedId, undefined, fileContent);
+      }
+    },
+    [selectedId, update]
+  );
+
   if (selectedId === SYSTEM_HOSTS_ID) {
     return (
       <div className="editor">
@@ -92,7 +106,7 @@ export default function ContextEditor() {
           <h2 className="editor-name">System Hosts</h2>
           <span className="editor-status">Read-only</span>
         </div>
-        <pre className="editor-readonly">{highlightSystemHosts(systemHosts)}</pre>
+        <pre className="editor-readonly">{highlightHosts(systemHosts)}</pre>
       </div>
     );
   }
@@ -113,12 +127,17 @@ export default function ContextEditor() {
     }, 500);
   };
 
-  const handleNameSave = () => {
+  const handleNameConfirm = () => {
     setEditingName(false);
     const trimmed = name.trim();
     if (trimmed && trimmed !== selected.name) {
       update(selected.id, trimmed);
     }
+  };
+
+  const handleNameCancel = () => {
+    setName(selected.name);
+    setEditingName(false);
   };
 
   // Content for the highlight layer (always ends with newline so cursor space matches)
@@ -128,33 +147,57 @@ export default function ContextEditor() {
     <div className="editor">
       <div className="editor-header">
         {editingName ? (
-          <input
-            className="editor-name-input"
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={handleNameSave}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleNameSave();
-              if (e.key === "Escape") {
-                setName(selected.name);
-                setEditingName(false);
-              }
-            }}
-          />
+          <div className="editor-name-edit">
+            <input
+              className="editor-name-input"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleNameConfirm();
+                if (e.key === "Escape") handleNameCancel();
+              }}
+            />
+            <button className="editor-name-confirm" onClick={handleNameConfirm} title="Confirm rename">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </button>
+            <button className="editor-name-cancel" onClick={handleNameCancel} title="Cancel">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
         ) : (
-          <h2
-            className="editor-name"
-            onDoubleClick={() => setEditingName(true)}
-            title="Double-click to rename"
-          >
-            {selected.name}
-          </h2>
+          <div className="editor-name-row">
+            <h2 className="editor-name">{selected.name}</h2>
+            <button className="editor-rename-btn" onClick={() => setEditingName(true)} title="Rename">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          </div>
         )}
-        <span className={`editor-status ${selected.enabled ? "enabled" : ""}`}>
-          {selected.enabled ? "Active" : "Inactive"}
-        </span>
+        {!editingName && (
+          <span className={`editor-status ${selected.enabled ? "enabled" : ""}`}>
+            {selected.enabled ? "Active" : "Inactive"}
+          </span>
+        )}
       </div>
+      {!content && !manualMode ? (
+        <div className="editor-dropzone-wrap">
+          <FileDropZone
+            title="Drag & drop a hosts file"
+            hint="or click to browse"
+            onImport={handleImportFile}
+          />
+          <button className="editor-manual-link" onClick={() => setManualMode(true)}>
+            or edit manually
+          </button>
+        </div>
+      ) : (
       <div className="editor-code-wrap">
         <pre ref={highlightRef} className="editor-highlight" aria-hidden="true">
           {content
@@ -186,6 +229,7 @@ export default function ContextEditor() {
           spellCheck={false}
         />
       </div>
+      )}
     </div>
   );
 }

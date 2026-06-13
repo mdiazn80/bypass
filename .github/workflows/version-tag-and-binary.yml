@@ -10,8 +10,8 @@ name: Version tag and binary
 # - Windows — NSIS installer
 # - latest.json — updater manifest consumed by tauri-plugin-updater
 #
-# Notarización: APPLE_ID (email), APPLE_PASSWORD (contraseña específica de app, appleid.apple.com), APPLE_TEAM_ID.
-# Certificado: Developer ID Application en el .p12 (Apple Development no sirve para notarizar distribución).
+# Notarization: APPLE_ID (email), APPLE_PASSWORD (app-specific password, appleid.apple.com), APPLE_TEAM_ID.
+# Certificate: Developer ID Application in the .p12 (Apple Development cannot notarize for distribution).
 #
 # Shell logic lives in scripts/ at repo root.
 on:

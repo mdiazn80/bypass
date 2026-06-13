@@ -2,54 +2,58 @@ version: "3"
 
 tasks:
   default:
-    desc: Lista las tareas disponibles
+    desc: List the available tasks
     silent: true
     cmds:
       - task --list
 
   install:
-    desc: Instala dependencias del frontend con pnpm
+    desc: Install frontend dependencies with pnpm
     cmds:
       - pnpm install
 
   dev:
-    desc: Arranca la app en modo desarrollo (Vite + Tauri)
+    desc: Start the app in development mode (Vite + Tauri)
     cmds:
       - pnpm tauri dev
 
   build:
-    desc: Release completo (requiere TAURI_SIGNING_PRIVATE_KEY si createUpdaterArtifacts está activo)
+    desc: Full release (requires TAURI_SIGNING_PRIVATE_KEY if createUpdaterArtifacts is enabled)
     cmds:
       - pnpm tauri build
 
   build:local:
-    desc: Build local sin artefactos de updater ni code signing (evita TAURI_SIGNING_PRIVATE_KEY)
+    desc: Local build without updater artifacts or code signing (avoids TAURI_SIGNING_PRIVATE_KEY)
+    # CI=true makes Tauri pass --sandbox-safe to bundle_dmg.sh, skipping the Finder
+    # AppleScript layout step that requires Automation permission on the terminal.
+    env:
+      CI: "true"
     cmds:
       - pnpm tauri build --no-sign -c '{"bundle":{"createUpdaterArtifacts":false}}'
 
   build:frontend:
-    desc: Solo compila el frontend (tsc + vite build), sin empaquetar Tauri
+    desc: Build only the frontend (tsc + vite build), without packaging Tauri
     cmds:
       - pnpm build
 
   preview:
-    desc: Sirve el build de Vite en local (sin ventana nativa de Tauri)
+    desc: Serve the Vite build locally (without the native Tauri window)
     cmds:
       - pnpm preview
 
   clean:
-    desc: Borra dist del frontend y el target de Rust (cargo clean)
+    desc: Remove the frontend dist and the Rust target (cargo clean)
     cmds:
       - rm -rf "{{.TASKFILE_DIR}}/dist"
       - cargo clean --manifest-path "{{.TASKFILE_DIR}}/src-tauri/Cargo.toml"
 
   clean:all:
-    desc: Limpia artefactos de compilación y node_modules
+    desc: Clean build artifacts and node_modules
     deps: [clean]
     cmds:
       - rm -rf "{{.TASKFILE_DIR}}/node_modules"
 
   info:
-    desc: Muestra el entorno detectado por el CLI de Tauri
+    desc: Show the environment detected by the Tauri CLI
     cmds:
       - pnpm tauri info

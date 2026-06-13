@@ -1,28 +1,14 @@
-import { useEffect, useRef, useState } from "react";
-import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+import { useState } from "react";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useContextStore, SYSTEM_HOSTS_ID } from "../stores/useContextStore";
 import "./Sidebar.css";
 
 export default function Sidebar() {
-  const { contexts, selectedId, select, create, remove, toggle, importContext } =
+  const { contexts, selectedId, select, create, remove, toggle } =
     useContextStore();
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!showMenu) return;
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [showMenu]);
 
   const handleCreate = async () => {
     const name = newName.trim();
@@ -30,37 +16,6 @@ export default function Sidebar() {
     await create(name);
     setNewName("");
     setShowInput(false);
-  };
-
-  const handleAddClick = () => {
-    setShowMenu(false);
-    setShowInput(true);
-  };
-
-  const handleImportClick = async () => {
-    setShowMenu(false);
-    try {
-      const filePath = await open({
-        multiple: false,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (!filePath) return;
-
-      const text = await readTextFile(filePath);
-      const data = JSON.parse(text);
-
-      if (Array.isArray(data)) {
-        for (const item of data) {
-          if (item.name && typeof item.content === "string") {
-            await importContext(item.name, item.content);
-          }
-        }
-      } else if (data.name && typeof data.content === "string") {
-        await importContext(data.name, data.content);
-      }
-    } catch {
-      // user cancelled or invalid file
-    }
   };
 
   const handleExport = async (ctx: { id: string; name: string; content: string }) => {
@@ -82,21 +37,13 @@ export default function Sidebar() {
     <div className="sidebar">
       <div className="sidebar-header">
         <span className="sidebar-label">Contexts</span>
-        <div className="sidebar-add-wrap" ref={menuRef}>
-          <button
-            className="sidebar-add"
-            onClick={() => setShowMenu(!showMenu)}
-            title="Add context"
-          >
-            +
-          </button>
-          {showMenu && (
-            <div className="sidebar-add-menu">
-              <button onClick={handleAddClick}>New</button>
-              <button onClick={handleImportClick}>Import</button>
-            </div>
-          )}
-        </div>
+        <button
+          className="sidebar-add"
+          onClick={() => setShowInput(true)}
+          title="New context"
+        >
+          +
+        </button>
       </div>
 
       {showInput && (
@@ -136,14 +83,6 @@ export default function Sidebar() {
             className={`sidebar-item ${selectedId === ctx.id ? "selected" : ""}`}
             onClick={() => select(ctx.id)}
           >
-            <label className="sidebar-toggle" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="checkbox"
-                checked={ctx.enabled}
-                onChange={() => toggle(ctx.id)}
-              />
-              <span className="toggle-slider" />
-            </label>
             <span className="sidebar-item-name">{ctx.name}</span>
             <button
               className="sidebar-export"
@@ -165,6 +104,14 @@ export default function Sidebar() {
             >
               ×
             </button>
+            <label className="sidebar-toggle" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={ctx.enabled}
+                onChange={() => toggle(ctx.id)}
+              />
+              <span className="toggle-slider" />
+            </label>
           </div>
         ))}
 

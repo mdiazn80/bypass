@@ -1,0 +1,58 @@
+---
+description: Rust and Tauri coding standards for the Bypass backend
+globs: src-tauri/src/**/*.rs
+alwaysApply: false
+---
+
+# Rust & Tauri Standards
+
+## Error Handling
+
+Avoid `unwrap()` on anything that can realistically fail at runtime.
+
+```rust
+// ❌ BAD
+let window = app.get_webview_window("main").unwrap();
+
+// ✅ GOOD
+let window = app.get_webview_window("main")
+    .ok_or("main window not found")?;
+```
+
+Return `Result<T, String>` (or a typed error) from all Tauri commands so the frontend can handle failures.
+
+## Mutex / State
+
+- Use `lock().unwrap()` only where a panic is acceptable (startup/teardown)
+- For runtime paths, prefer `.lock().map_err(|e| e.to_string())?`
+- Never hold a mutex guard across an `await` point
+
+## Transactional Hosts Write
+
+Apply hosts **before** persisting to disk. If `apply_to_hosts` fails, roll back in-memory state and return an error — do not persist a state that doesn't match the system file.
+
+```rust
+// Correct order
+apply_to_hosts(&contexts)?;   // fails → nothing persisted
+save_contexts(&contexts)?;    // only runs if apply succeeded
+```
+
+## Input Validation
+
+Validate IP addresses and hostnames before writing to the hosts file. Reject malformed entries with a descriptive error returned to the frontend.
+
+## Serialization
+
+- Use `serde_json::from_str(...).unwrap_or_default()` only when data loss is explicitly acceptable and logged
+- Prefer returning an error so the UI can warn the user about corrupted storage
+
+## Commands
+
+- Every `#[tauri::command]` must have a doc-comment explaining its purpose and arguments
+- Keep command functions thin — delegate to domain modules (`hosts.rs`, `storage.rs`, etc.)
+
+## Security
+
+- Do not construct shell commands with user-supplied content
+- Validate any path received from the frontend before filesystem operations
+- Keep `csp` configured in `tauri.conf.json`; avoid `null`

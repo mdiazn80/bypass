@@ -1,0 +1,56 @@
+---
+description: Dead code must be removed, never commented out or left unused
+alwaysApply: true
+---
+
+# No Dead Code
+
+## Rule
+
+Delete code that is no longer used. Do not comment it out or leave it "just in case".
+
+This applies to:
+- Unused functions, methods, commands and exports
+- Unreachable code paths
+- Components that are not rendered anywhere
+- Event listeners that are never emitted
+- Unused imports and type declarations
+- Orphaned CSS files for deleted components
+
+## Rust
+
+The compiler helps: treat `#[allow(dead_code)]` as a red flag.  
+Remove `#[tauri::command]` functions that are not registered in `invoke_handler!` **and** remove their registration too.
+
+```rust
+// ❌ BAD — registered but never called from frontend
+#[tauri::command]
+pub fn authenticate_biometric() -> Result<(), String> { ... }
+
+// ✅ GOOD — remove both the command and its registration in lib.rs
+```
+
+## TypeScript
+
+Remove exported functions in `src/services/tauri.ts` that are not imported anywhere.
+
+```typescript
+// ❌ BAD — defined but never imported by any component or store
+export async function applyContexts(): Promise<void> {
+  return invoke("apply_contexts");
+}
+
+// ✅ GOOD — delete it
+```
+
+## React
+
+Delete entire component files (`.tsx` + `.css`) when the component is not used in any `import` or `render` call.
+
+## Event Listeners
+
+Remove `listen(...)` calls for events that are never emitted anywhere in the codebase.
+
+## When in doubt
+
+Search for usages before deleting. If zero results → delete.
