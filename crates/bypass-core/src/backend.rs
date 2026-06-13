@@ -121,15 +121,11 @@ impl HybridBackend {
         self.store(&data)
     }
 
-    /// Deletes a context and all of its variables. Clears the global active
-    /// pointer if it referenced the deleted context.
+    /// Deletes a context and all of its variables.
     pub fn delete_context(&self, name: &str) -> Result<(), BypassError> {
         let mut data = self.load()?;
         if data.contexts.remove(name).is_none() {
             return Err(BypassError::ContextNotFound(name.to_string()));
-        }
-        if data.active_context.as_deref() == Some(name) {
-            data.active_context = None;
         }
         self.store(&data)
     }
@@ -161,62 +157,6 @@ impl HybridBackend {
             .collect())
     }
 
-    /// Returns every variable of a context as a key/value map. Used to inject
-    /// the environment for `run`/`shell`.
-    pub fn vars(&self, context: &str) -> Result<BTreeMap<String, String>, BypassError> {
-        let data = self.load()?;
-        let entry = data
-            .contexts
-            .get(context)
-            .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
-        Ok(entry.vars.clone())
-    }
-
-    /// Returns the globally configured active context, if any.
-    pub fn get_active(&self) -> Result<Option<String>, BypassError> {
-        Ok(self.load()?.active_context)
-    }
-
-    /// Sets (or clears) the global active context. Validates that the named
-    /// context exists.
-    pub fn set_active(&self, name: Option<&str>) -> Result<(), BypassError> {
-        let mut data = self.load()?;
-        if let Some(n) = name {
-            if !data.contexts.contains_key(n) {
-                return Err(BypassError::ContextNotFound(n.to_string()));
-            }
-        }
-        data.active_context = name.map(|s| s.to_string());
-        self.store(&data)
-    }
-
-    /// Writes a passphrase-encrypted export of the whole vault to `path` for
-    /// migration between machines. The OS keychain master key is not used.
-    pub fn export_to(&self, path: &std::path::Path, passphrase: &str) -> Result<(), BypassError> {
-        let data = self.load()?;
-        let blob = crate::portable::export(&data, passphrase)?;
-        fs::write(path, blob)?;
-        Ok(())
-    }
-
-    /// Imports contexts from a passphrase-encrypted export, merging them into
-    /// the current vault (existing contexts with the same name are replaced).
-    pub fn import_from(
-        &self,
-        path: &std::path::Path,
-        passphrase: &str,
-    ) -> Result<(), BypassError> {
-        let blob = fs::read(path)?;
-        let imported = crate::portable::import(&blob, passphrase)?;
-        let mut data = self.load()?;
-        for (name, entry) in imported.contexts {
-            data.contexts.insert(name, entry);
-        }
-        if data.active_context.is_none() {
-            data.active_context = imported.active_context;
-        }
-        self.store(&data)
-    }
 }
 
 impl SecretBackend for HybridBackend {
@@ -316,16 +256,13 @@ mod tests {
     }
 
     #[test]
-    fn context_lifecycle_and_active() {
+    fn context_lifecycle() {
         let dir = temp_dir("lifecycle");
         let backend = test_backend(&dir);
         backend.create_context("prod", "Production").unwrap();
         assert!(backend.create_context("prod", "dup").is_err());
-        backend.set_active(Some("prod")).unwrap();
-        assert_eq!(backend.get_active().unwrap().as_deref(), Some("prod"));
         backend.delete_context("prod").unwrap();
-        assert_eq!(backend.get_active().unwrap(), None);
-        assert!(backend.set_active(Some("missing")).is_err());
+        assert!(backend.delete_context("prod").is_err());
         fs::remove_dir_all(&dir).ok();
     }
 }

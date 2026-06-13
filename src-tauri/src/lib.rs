@@ -90,8 +90,6 @@ pub fn run() {
             credentials::get_credential_var,
             credentials::set_credential_var,
             credentials::delete_credential_var,
-            credentials::get_active_credential_context,
-            credentials::set_active_credential_context,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,15 +3,8 @@ import { useCredentialStore } from "../stores/useCredentialStore";
 import "./Sidebar.css";
 
 export default function CredentialSidebar() {
-  const {
-    contexts,
-    selectedName,
-    activeName,
-    selectContext,
-    createContext,
-    deleteContext,
-    setActive,
-  } = useCredentialStore();
+  const { contexts, selectedName, selectContext, createContext, deleteContext } =
+    useCredentialStore();
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState(false);
 
@@ -56,40 +49,25 @@ export default function CredentialSidebar() {
       )}
 
       <div className="sidebar-list">
-        {contexts.map((ctx) => {
-          const isActive = ctx.name === activeName;
-          return (
-            <div
-              key={ctx.name}
-              className={`sidebar-item ${selectedName === ctx.name ? "selected" : ""}`}
-              onClick={() => selectContext(ctx.name)}
+        {contexts.map((ctx) => (
+          <div
+            key={ctx.name}
+            className={`sidebar-item ${selectedName === ctx.name ? "selected" : ""}`}
+            onClick={() => selectContext(ctx.name)}
+          >
+            <span className="sidebar-item-name">{ctx.name}</span>
+            <button
+              className="sidebar-delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteContext(ctx.name);
+              }}
+              title="Delete context"
             >
-              <span className="sidebar-item-name">{ctx.name}</span>
-              <button
-                className="sidebar-delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteContext(ctx.name);
-                }}
-                title="Delete context"
-              >
-                ×
-              </button>
-              <label
-                className="sidebar-toggle"
-                onClick={(e) => e.stopPropagation()}
-                title={isActive ? "Active context (click to deactivate)" : "Set as active context"}
-              >
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={() => setActive(isActive ? null : ctx.name)}
-                />
-                <span className="toggle-slider" />
-              </label>
-            </div>
-          );
-        })}
+              ×
+            </button>
+          </div>
+        ))}
 
         {contexts.length === 0 && (
           <div className="sidebar-empty">No credential contexts yet</div>

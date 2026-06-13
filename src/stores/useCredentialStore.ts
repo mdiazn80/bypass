@@ -11,7 +11,6 @@ export interface VarRow {
 interface CredentialStore {
   contexts: CredentialContext[];
   selectedName: string | null;
-  activeName: string | null;
   vars: VarRow[];
   loading: boolean;
   error: string | null;
@@ -21,7 +20,6 @@ interface CredentialStore {
   createContext: (name: string, description: string) => Promise<void>;
   updateContext: (name: string, description: string) => Promise<void>;
   deleteContext: (name: string) => Promise<void>;
-  setActive: (name: string | null) => Promise<void>;
   reveal: (key: string) => Promise<void>;
   hide: (key: string) => void;
   setVar: (key: string, value: string) => Promise<void>;
@@ -32,7 +30,6 @@ interface CredentialStore {
 export const useCredentialStore = create<CredentialStore>((set, get) => ({
   contexts: [],
   selectedName: null,
-  activeName: null,
   vars: [],
   loading: false,
   error: null,
@@ -40,11 +37,8 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
   load: async () => {
     set({ loading: true, error: null });
     try {
-      const [contexts, activeName] = await Promise.all([
-        api.listCredentialContexts(),
-        api.getActiveCredentialContext(),
-      ]);
-      set({ contexts, activeName, loading: false });
+      const contexts = await api.listCredentialContexts();
+      set({ contexts, loading: false });
     } catch (err) {
       set({ loading: false, error: String(err) });
     }
@@ -88,15 +82,6 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
       if (wasSelected) {
         set({ selectedName: null, vars: [] });
       }
-    } catch (err) {
-      set({ error: String(err) });
-    }
-  },
-
-  setActive: async (name: string | null) => {
-    try {
-      await api.setActiveCredentialContext(name);
-      set({ activeName: name });
     } catch (err) {
       set({ error: String(err) });
     }

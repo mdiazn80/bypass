@@ -40,17 +40,8 @@ function parseEnv(text: string): { key: string; value: string }[] {
 }
 
 export default function CredentialEditor() {
-  const {
-    contexts,
-    selectedName,
-    activeName,
-    vars,
-    updateContext,
-    reveal,
-    hide,
-    setVar,
-    deleteVar,
-  } = useCredentialStore();
+  const { contexts, selectedName, vars, updateContext, reveal, hide, setVar, deleteVar } =
+    useCredentialStore();
 
   const selected = contexts.find((c) => c.name === selectedName);
   const [description, setDescription] = useState("");
@@ -78,8 +69,6 @@ export default function CredentialEditor() {
     );
   }
 
-  const isActive = selected.name === activeName;
-
   const handleDescriptionSave = () => {
     if (description !== selected.description) {
       updateContext(selected.name, description);
@@ -98,9 +87,6 @@ export default function CredentialEditor() {
     <div className="editor">
       <div className="editor-header">
         <h2 className="editor-name">{selected.name}</h2>
-        <span className={`editor-status ${isActive ? "enabled" : ""}`}>
-          {isActive ? "Active" : "Inactive"}
-        </span>
       </div>
 
       <div className="cred-body">

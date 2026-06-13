@@ -97,13 +97,3 @@ export async function deleteCredentialVar(
 ): Promise<void> {
   return invoke("delete_credential_var", { context, key });
 }
-
-export async function getActiveCredentialContext(): Promise<string | null> {
-  return invoke("get_active_credential_context");
-}
-
-export async function setActiveCredentialContext(
-  name: string | null
-): Promise<void> {
-  return invoke("set_active_credential_context", { name });
-}

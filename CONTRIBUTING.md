@@ -44,14 +44,12 @@ The repository is a Cargo workspace plus the React frontend:
 
 - **`src/`**: React frontend, TypeScript, Zustand, Vite.
 - **`src-tauri/`**: Tauri GUI crate (commands, hosts file read/write, tray, credential commands).
-- **`crates/bypass-core/`**: shared library: encrypted credential vault (`SecretBackend` trait + `HybridBackend`) and `.bypass-context` resolution. Used by both the GUI and the CLI.
-- **`crates/bypass-cli/`**: the `bypass` command-line companion and Ratatui TUI.
+- **`crates/bypass-core/`**: shared library: encrypted credential vault (`SecretBackend` trait + `HybridBackend`). Used by the GUI.
 
 Build and test the Rust workspace with:
 
 ```bash
 cargo test --workspace      # unit tests (bypass-core)
-cargo build -p bypass-cli   # the CLI binary
 pnpm tauri dev              # the GUI (resolves the workspace from the repo root)
 ```
 

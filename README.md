@@ -7,7 +7,7 @@ Bypass lets you create, organize and toggle groups of hosts entries (called **Co
 ## Features
 
 - **Contexts** &mdash; Group related hosts entries and toggle them on/off with a single click.
-- **Credential contexts** &mdash; Manage sensitive environment variables (API keys, tokens, connection strings) in an encrypted vault, with a companion CLI to inject them into any process.
+- **Credential contexts** &mdash; Manage sensitive environment variables (API keys, tokens, connection strings) in an encrypted vault (OS keychain master key + ChaCha20-Poly1305 on-disk store).
 - **Syntax highlighting** &mdash; IPs, hostnames and comments are color-coded in the editor.
 - **System Hosts view** &mdash; Read-only preview of the current `/etc/hosts` file, auto-refreshed when contexts change.
 - **Import / Export** &mdash; Share contexts as JSON files using native OS file dialogs.
@@ -78,9 +78,10 @@ bypass/
 ├── src/                        # Frontend (React + TypeScript)
 │   ├── components/
 │   │   ├── TopBar.tsx          # Navigation: Hosts / Credentials / Settings
-│   │   ├── Sidebar.tsx         # Context list, toggle, import/export
+│   │   ├── Sidebar.tsx         # Hosts context list, toggle, export
 │   │   ├── ContextEditor.tsx   # Hosts editor with syntax highlighting
-│   │   ├── CredentialSidebar.tsx  # Credential context list + active toggle
+│   │   ├── FileDropZone.tsx    # Drag-and-drop file import for new contexts
+│   │   ├── CredentialSidebar.tsx  # Credential context list
 │   │   ├── CredentialEditor.tsx   # Key/value editor with masked values
 │   │   ├── Settings.tsx        # App settings (autostart, tray, etc.)
 │   │   ├── AboutModal.tsx      # About dialog
@@ -104,15 +105,12 @@ bypass/
 │   │   └── state.rs            # Shared app state
 │   └── tauri.conf.json         # Tauri configuration
 ├── crates/
-│   ├── bypass-core/            # Shared: encrypted vault + context resolver
-│   │   └── src/
-│   │       ├── backend.rs      # SecretBackend trait + HybridBackend
-│   │       ├── crypto.rs       # ChaCha20-Poly1305 seal/open
-│   │       ├── keystore.rs     # OS keychain master key + env fallback
-│   │       ├── portable.rs     # Passphrase export/import (Argon2)
-│   │       ├── resolver.rs     # .bypass-context resolution
-│   │       └── vault.rs        # High-level API
-│   └── bypass-cli/             # `bypass` CLI + Ratatui TUI
+│   └── bypass-core/            # Shared: encrypted credential vault
+│       └── src/
+│           ├── backend.rs      # SecretBackend trait + HybridBackend
+│           ├── crypto.rs       # ChaCha20-Poly1305 seal/open
+│           ├── keystore.rs     # OS keychain master key + env fallback
+│           └── vault.rs        # High-level API
 └── .github/
     └── workflows/
         └── version-tag-and-binary.yml  # CI: build binaries on merged PRs
@@ -139,9 +137,9 @@ bypass/
 ## Import / Export
 
 - **Export**: click the download arrow on any context in the sidebar. A native Save dialog lets you choose where to save the `.json` file.
-- **Import**: click the `+` button, then **Import**. A native Open dialog lets you pick a `.json` file (single context) or an array of contexts.
+- **Import**: click `+` to create a context, then drag a hosts-format file onto the drop zone (or click it to browse). The dropped file initializes the context content.
 
-JSON format:
+Export JSON format:
 
 ```json
 {
@@ -160,31 +158,12 @@ Bypass can manage groups of sensitive environment variables (a *credential conte
 - Contexts and variables are stored in an encrypted file (`store.enc`) next to the app data, sealed with **ChaCha20-Poly1305** using that master key.
 - Secret values are never written to disk in plaintext, and the master key never appears in the file.
 
-In the GUI, open the **Credentials** tab to create contexts, add/edit/delete variables (values are masked by default with a reveal toggle), and mark one context as the global active context.
-
-### CLI companion
-
-The `bypass` binary (built from `crates/bypass-cli`) shares the same vault and resolves the active context with this priority:
-
-1. A `.bypass-context` file in the current directory or any parent (searched upwards, like `.git`), containing a context name.
-2. The global active context set from the GUI or via `bypass use`.
-
-```bash
-bypass list                 # list contexts and show which is active
-bypass use <context>        # set the global active context
-bypass run -- <command>     # run a command with the context's variables injected
-bypass shell                # open a subshell with the variables injected
-bypass tui                  # interactive TUI (also the default with no arguments)
-bypass export <file>        # passphrase-encrypted export for migration
-bypass import <file>        # import contexts from an export file
-```
-
-`export`/`import` read the passphrase from `BYPASS_EXPORT_PASSPHRASE` (kept out of argv and shell history) and derive a key with Argon2, so the file can be moved to another machine without exposing the keychain master key.
+In the GUI, open the **Credentials** tab to create contexts and add/edit/delete variables (values are masked by default with a reveal toggle). You can initialize a context by dragging a `.env`-style file onto the drop zone; keys without a value are imported empty so you can fill them in manually.
 
 ### Security notes
 
+- Secret values are never written to disk in plaintext, and the master key never appears in the encrypted store.
 - If the OS keychain is unavailable (e.g. headless Linux without a Secret Service), set `BYPASS_MASTER_KEY` to a base64-encoded 32-byte key and Bypass will use it instead of the keychain.
-- Variables are injected into the child process environment for `run`/`shell`; they are not passed via command-line arguments.
 
 ## CI / CD
 
@@ -199,9 +178,8 @@ A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) build
 ## Tech Stack
 
 - **Frontend**: React 19, TypeScript, Zustand, Vite
-- **Backend**: Rust, Tauri 2 (Cargo workspace: `bypass-core`, `bypass-cli`, GUI)
-- **Crypto**: ChaCha20-Poly1305, Argon2, OS keychain (`keyring`)
-- **CLI/TUI**: `clap`, `ratatui`, `crossterm`
+- **Backend**: Rust, Tauri 2 (Cargo workspace: `bypass-core` + GUI)
+- **Crypto**: ChaCha20-Poly1305, OS keychain (`keyring`)
 - **Plugins**: `tauri-plugin-dialog`, `tauri-plugin-fs`, `tauri-plugin-opener`, `tauri-plugin-autostart`
 
 ## License

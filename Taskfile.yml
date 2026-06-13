@@ -24,6 +24,10 @@ tasks:
 
   build:local:
     desc: Local build without updater artifacts or code signing (avoids TAURI_SIGNING_PRIVATE_KEY)
+    # CI=true makes Tauri pass --sandbox-safe to bundle_dmg.sh, skipping the Finder
+    # AppleScript layout step that requires Automation permission on the terminal.
+    env:
+      CI: "true"
     cmds:
       - pnpm tauri build --no-sign -c '{"bundle":{"createUpdaterArtifacts":false}}'
 

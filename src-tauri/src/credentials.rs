@@ -86,18 +86,3 @@ pub fn delete_credential_var(
 ) -> Result<(), String> {
     with_vault(&state, |v| v.delete_var(&context, &key))
 }
-
-/// Returns the globally configured active context, if any.
-#[tauri::command]
-pub fn get_active_credential_context(state: State<AppState>) -> Result<Option<String>, String> {
-    with_vault(&state, |v| v.get_active())
-}
-
-/// Sets or clears the global active context.
-#[tauri::command]
-pub fn set_active_credential_context(
-    state: State<AppState>,
-    name: Option<String>,
-) -> Result<(), String> {
-    with_vault(&state, |v| v.set_active(name.as_deref()))
-}

@@ -34,7 +34,5 @@ pub(crate) struct ContextEntry {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct VaultData {
     #[serde(default)]
-    pub active_context: Option<String>,
-    #[serde(default)]
     pub contexts: BTreeMap<String, ContextEntry>,
 }

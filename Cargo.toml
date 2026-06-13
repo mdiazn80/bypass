@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri", "crates/bypass-core", "crates/bypass-cli"]
+members = ["src-tauri", "crates/bypass-core"]
 resolver = "2"
 
 [workspace.dependencies]
