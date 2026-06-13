@@ -10,6 +10,9 @@
   line-height: 1.5;
   color: #e0e0e0;
   background-color: #141414;
+  --font-mono: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-accent: #4ade80;
+  --color-btn-primary-text: #0a0a0a;
 }
 
 body {

@@ -23,6 +23,10 @@
   padding: 20px;
 }
 
+.settings-group {
+  margin-bottom: 24px;
+}
+
 .settings-group h3 {
   font-size: 13px;
   font-weight: 600;
@@ -111,4 +115,69 @@
 .settings-toggle input:checked + .settings-toggle-slider::before {
   transform: translateX(18px);
   background: #fff;
+}
+
+/* Shell integration controls */
+.settings-select {
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 160px;
+  cursor: pointer;
+}
+
+.settings-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.settings-button {
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.settings-button:hover:not(:disabled) {
+  background: #333;
+  border-color: #4a4a4a;
+}
+
+.settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #888;
+  padding: 8px 16px;
+}
+
+.settings-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+  flex-shrink: 0;
+}
+
+.settings-status-dot.active {
+  background: #4ade80;
 }

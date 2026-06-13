@@ -142,6 +142,21 @@ impl HybridBackend {
         self.store(&data)
     }
 
+    /// Renames a context, preserving all its variables and metadata.
+    /// Fails if `new_name` is already taken.
+    pub fn rename_context(&self, old_name: &str, new_name: &str) -> Result<(), BypassError> {
+        let mut data = self.load()?;
+        if data.contexts.contains_key(new_name) {
+            return Err(BypassError::ContextExists(new_name.to_string()));
+        }
+        let entry = data
+            .contexts
+            .remove(old_name)
+            .ok_or_else(|| BypassError::ContextNotFound(old_name.to_string()))?;
+        data.contexts.insert(new_name.to_string(), entry);
+        self.store(&data)
+    }
+
     /// Returns public metadata for every context, sorted by name.
     pub fn context_meta(&self) -> Result<Vec<CredentialContext>, BypassError> {
         let data = self.load()?;

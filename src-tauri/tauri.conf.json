@@ -13,7 +13,7 @@
   "app": {
     "windows": [
       {
-        "title": "Bypass - Hosts Manager",
+        "title": "Bypass",
         "width": 1000,
         "height": 700,
         "minWidth": 800,

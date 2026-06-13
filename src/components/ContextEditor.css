@@ -59,6 +59,47 @@
   cursor: default;
 }
 
+/* Row containing name + pencil icon */
+.editor-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pencil icon button — appears on header hover */
+.editor-rename-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 3px 4px;
+  border-radius: 4px;
+  box-shadow: none;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+
+.editor-header:hover .editor-rename-btn {
+  opacity: 1;
+}
+
+.editor-rename-btn:hover {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
+}
+
+/* Inline rename form */
+.editor-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
 .editor-name-input {
   font-size: 16px;
   font-weight: 600;
@@ -69,6 +110,40 @@
   padding: 2px 8px;
   outline: none;
   box-shadow: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.editor-name-confirm,
+.editor-name-cancel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 5px;
+  border-radius: 4px;
+  box-shadow: none;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.editor-name-confirm {
+  color: #4ade80;
+}
+
+.editor-name-confirm:hover {
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.editor-name-cancel {
+  color: #666;
+}
+
+.editor-name-cancel:hover {
+  color: #ff4466;
+  background: rgba(255, 68, 102, 0.1);
 }
 
 .editor-status {
@@ -99,7 +174,7 @@
   width: 100%;
   height: 100%;
   background: #111111;
-  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   padding: 16px 20px;
@@ -158,7 +233,7 @@
   flex: 1;
   background: #111111;
   color: #999;
-  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   padding: 16px 20px;

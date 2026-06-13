@@ -42,6 +42,10 @@ impl Vault {
         self.backend.delete_context(name)
     }
 
+    pub fn rename_context(&self, old_name: &str, new_name: &str) -> Result<(), BypassError> {
+        self.backend.rename_context(old_name, new_name)
+    }
+
     // --- Variables ----------------------------------------------------------
 
     pub fn list_keys(&self, context: &str) -> Result<Vec<String>, BypassError> {

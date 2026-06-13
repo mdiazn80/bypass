@@ -1,9 +1,11 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
+use crate::agent;
 use crate::biometric;
 use crate::hosts;
 use crate::models::{AppConfig, Context};
+use crate::shell_install::{self, ShellStatus};
 use crate::state::AppState;
 use crate::storage;
 
@@ -162,4 +164,104 @@ pub fn update_config(
 #[tauri::command]
 pub fn check_biometric_available() -> bool {
     biometric::is_available()
+}
+
+// --- Shell integration ------------------------------------------------------
+
+/// Builds the current shell-integration status snapshot for the UI.
+fn build_status(state: &State<AppState>) -> ShellStatus {
+    let (enabled, installed, active) = state
+        .config
+        .lock()
+        .ok()
+        .map(|c| {
+            (
+                c.shell_integration_enabled,
+                c.shell_integration_installed,
+                c.active_context.clone(),
+            )
+        })
+        .unwrap_or((false, false, None));
+    let socket_active = state.agent.lock().map(|a| a.is_some()).unwrap_or(false);
+    ShellStatus {
+        enabled,
+        installed,
+        socket_active,
+        active_context: active,
+        detected_shell: shell_install::detected_shell_label(),
+        rc_path: shell_install::rc_path_string(),
+    }
+}
+
+#[tauri::command]
+pub fn get_shell_status(state: State<AppState>) -> ShellStatus {
+    build_status(&state)
+}
+
+/// Sets which credential context's variables are served to shells.
+#[tauri::command]
+pub fn set_active_context(
+    state: State<AppState>,
+    name: Option<String>,
+) -> Result<ShellStatus, String> {
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        cfg.active_context = name;
+        storage::save_config(&cfg)?;
+    }
+    agent::bump_gen(&state);
+    Ok(build_status(&state))
+}
+
+/// Starts or stops the local shell agent (socket listener).
+#[tauri::command]
+pub fn set_shell_agent_enabled(
+    app: AppHandle,
+    state: State<AppState>,
+    enabled: bool,
+) -> Result<ShellStatus, String> {
+    {
+        let mut guard = state.agent.lock().map_err(|e| e.to_string())?;
+        if enabled {
+            if guard.is_none() {
+                let handle = agent::start(app.clone()).map_err(|e| e.to_string())?;
+                *guard = Some(handle);
+            }
+        } else if let Some(handle) = guard.take() {
+            handle.stop();
+        }
+    }
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        cfg.shell_integration_enabled = enabled;
+        storage::save_config(&cfg)?;
+    }
+    Ok(build_status(&state))
+}
+
+/// Writes the prompt hook into the user's shell startup file.
+#[tauri::command]
+pub fn install_shell_integration(
+    app: AppHandle,
+    state: State<AppState>,
+) -> Result<ShellStatus, String> {
+    shell_install::install(&app)?;
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        cfg.shell_integration_installed = true;
+        storage::save_config(&cfg)?;
+    }
+    Ok(build_status(&state))
+}
+
+/// Removes the prompt hook from the user's shell startup file.
+#[tauri::command]
+pub fn uninstall_shell_integration(state: State<AppState>) -> Result<ShellStatus, String> {
+    shell_install::uninstall()?;
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        cfg.shell_integration_installed = false;
+        storage::save_config(&cfg)?;
+    }
+    Ok(build_status(&state))
 }

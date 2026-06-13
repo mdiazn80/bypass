@@ -9,7 +9,7 @@ pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     TrayIconBuilder::new()
         .menu(&menu)
-        .tooltip("Bypass - Hosts Manager")
+        .tooltip("Bypass")
         .icon(app.default_window_icon().unwrap().clone())
         .icon_as_template(true)
         .on_menu_event(move |app, event| {

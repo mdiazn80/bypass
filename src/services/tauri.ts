@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppConfig, Context, CredentialContext } from "../types";
+import type { AppConfig, Context, CredentialContext, ShellStatus } from "../types";
 
 export async function listContexts(): Promise<Context[]> {
   return invoke("list_contexts");
@@ -48,6 +48,28 @@ export async function checkBiometricAvailable(): Promise<boolean> {
   return invoke("check_biometric_available");
 }
 
+// --- Shell integration ---
+
+export async function getShellStatus(): Promise<ShellStatus> {
+  return invoke("get_shell_status");
+}
+
+export async function setActiveContext(name: string | null): Promise<ShellStatus> {
+  return invoke("set_active_context", { name });
+}
+
+export async function setShellAgentEnabled(enabled: boolean): Promise<ShellStatus> {
+  return invoke("set_shell_agent_enabled", { enabled });
+}
+
+export async function installShellIntegration(): Promise<ShellStatus> {
+  return invoke("install_shell_integration");
+}
+
+export async function uninstallShellIntegration(): Promise<ShellStatus> {
+  return invoke("uninstall_shell_integration");
+}
+
 // --- Credential contexts ---
 
 export async function listCredentialContexts(): Promise<CredentialContext[]> {
@@ -66,6 +88,13 @@ export async function updateCredentialContext(
   description: string
 ): Promise<void> {
   return invoke("update_credential_context", { name, description });
+}
+
+export async function renameCredentialContext(
+  oldName: string,
+  newName: string
+): Promise<void> {
+  return invoke("rename_credential_context", { old_name: oldName, new_name: newName });
 }
 
 export async function deleteCredentialContext(name: string): Promise<void> {

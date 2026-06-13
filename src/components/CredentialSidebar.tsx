@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCredentialStore } from "../stores/useCredentialStore";
+import { useConfigStore } from "../stores/useConfigStore";
 import "./Sidebar.css";
 
 export default function CredentialSidebar() {
   const { contexts, selectedName, selectContext, createContext, deleteContext } =
     useCredentialStore();
+  const activeContext = useConfigStore((s) => s.shellStatus?.active_context ?? null);
+  const setActiveContext = useConfigStore((s) => s.setActiveContext);
+  const loadShellStatus = useConfigStore((s) => s.loadShellStatus);
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState(false);
+
+  useEffect(() => {
+    loadShellStatus();
+  }, [loadShellStatus]);
 
   const handleCreate = async () => {
     const name = newName.trim();
@@ -14,6 +22,18 @@ export default function CredentialSidebar() {
     await createContext(name, "");
     setNewName("");
     setShowInput(false);
+  };
+
+  // Only one context can be active. Toggling the active one off clears it.
+  const handleToggleActive = (name: string) => {
+    setActiveContext(activeContext === name ? null : name);
+  };
+
+  const handleDelete = async (name: string) => {
+    if (activeContext === name) {
+      await setActiveContext(null);
+    }
+    await deleteContext(name);
   };
 
   return (
@@ -42,6 +62,12 @@ export default function CredentialSidebar() {
                 setNewName("");
               }
             }}
+            onBlur={() => {
+              if (!newName.trim()) {
+                setShowInput(false);
+                setNewName("");
+              }
+            }}
             placeholder="Context name..."
           />
           <button onClick={handleCreate}>Add</button>
@@ -56,16 +82,37 @@ export default function CredentialSidebar() {
             onClick={() => selectContext(ctx.name)}
           >
             <span className="sidebar-item-name">{ctx.name}</span>
+            {activeContext === ctx.name && (
+              <span className="sidebar-item-badge" title="Active in shells">
+                active
+              </span>
+            )}
             <button
               className="sidebar-delete"
               onClick={(e) => {
                 e.stopPropagation();
-                deleteContext(ctx.name);
+                handleDelete(ctx.name);
               }}
               title="Delete context"
             >
               ×
             </button>
+            <label
+              className="sidebar-toggle"
+              onClick={(e) => e.stopPropagation()}
+              title={
+                activeContext === ctx.name
+                  ? "Active context — variables served to your shells"
+                  : "Activate this context for your shells"
+              }
+            >
+              <input
+                type="checkbox"
+                checked={activeContext === ctx.name}
+                onChange={() => handleToggleActive(ctx.name)}
+              />
+              <span className="toggle-slider" />
+            </label>
           </div>
         ))}
 

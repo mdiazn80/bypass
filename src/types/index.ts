@@ -10,6 +10,18 @@ export interface Context {
 export interface AppConfig {
   minimize_to_tray: boolean;
   start_minimized: boolean;
+  shell_integration_enabled: boolean;
+  shell_integration_installed: boolean;
+  active_context: string | null;
+}
+
+export interface ShellStatus {
+  enabled: boolean;
+  installed: boolean;
+  socket_active: boolean;
+  active_context: string | null;
+  detected_shell: string | null;
+  rc_path: string | null;
 }
 
 export interface CredentialContext {

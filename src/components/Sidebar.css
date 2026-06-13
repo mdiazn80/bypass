@@ -71,7 +71,7 @@
 .sidebar-new button {
   background: #4ade80;
   border: none;
-  color: #fff;
+  color: #0a0a0a;
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 12px;
@@ -109,6 +109,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.sidebar-item-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
 }
 
 .sidebar-export,
