@@ -1,8 +1,8 @@
 # shellcheck shell=bash
-# Normaliza secretos pegados con saltos de línea (GitHub / copiar desde Keychain).
-# - TAURI_SIGNING_PRIVATE_KEY: Base64 estricto; \n rompe el decode.
-# - APPLE_SIGNING_IDENTITY: Tauri exige que coincida con el cert del .p12; \n/espacios raros provocan mismatch.
-# - APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID: credenciales notarización; \n rompe notarytool.
+# Normalize secrets pasted with line breaks (GitHub / copied from Keychain).
+# - TAURI_SIGNING_PRIVATE_KEY: strict Base64; \n breaks decoding.
+# - APPLE_SIGNING_IDENTITY: Tauri requires it to match the .p12 cert; \n/stray spaces cause a mismatch.
+# - APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID: notarization credentials; \n breaks notarytool.
 if [ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
   TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY//$'\r'/}"
   TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY//$'\n'/}"

@@ -10,11 +10,20 @@
 }
 
 .topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 16px;
   font-weight: 700;
   color: #4ade80;
   margin-right: 32px;
   letter-spacing: 0.5px;
+}
+
+.topbar-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
 }
 
 .topbar-nav {

@@ -1,5 +1,6 @@
 mod biometric;
 mod commands;
+mod credentials;
 mod hosts;
 mod models;
 mod state;
@@ -29,6 +30,7 @@ pub fn run() {
         .manage(AppState {
             contexts: Mutex::new(contexts),
             config: Mutex::new(config),
+            vault: Mutex::new(None),
         })
         .setup(|app| {
             tray::create_tray(app.handle())?;
@@ -76,9 +78,20 @@ pub fn run() {
             commands::delete_context,
             commands::toggle_context,
             commands::get_system_hosts,
+            commands::read_file_text,
             commands::get_config,
             commands::update_config,
             commands::check_biometric_available,
+            credentials::list_credential_contexts,
+            credentials::create_credential_context,
+            credentials::update_credential_context,
+            credentials::delete_credential_context,
+            credentials::list_credential_vars,
+            credentials::get_credential_var,
+            credentials::set_credential_var,
+            credentials::delete_credential_var,
+            credentials::get_active_credential_context,
+            credentials::set_active_credential_context,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

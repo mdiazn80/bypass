@@ -126,6 +126,13 @@ pub fn get_system_hosts() -> Result<String, String> {
     hosts::read_system_hosts()
 }
 
+/// Reads an arbitrary text file by absolute path. Used to import a context from
+/// a file dropped onto the window (drag-and-drop paths are outside the fs scope).
+#[tauri::command]
+pub fn read_file_text(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file: {e}"))
+}
+
 /// Returns the current app configuration.
 #[tauri::command]
 pub fn get_config(state: State<AppState>) -> AppConfig {

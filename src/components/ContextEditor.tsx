@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useContextStore, SYSTEM_HOSTS_ID } from "../stores/useContextStore";
+import FileDropZone from "./FileDropZone";
 import "./ContextEditor.css";
 
 export function highlightHosts(text: string): React.ReactNode[] {
@@ -63,6 +64,7 @@ export default function ContextEditor() {
   const [content, setContent] = useState("");
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
@@ -72,6 +74,7 @@ export default function ContextEditor() {
       setContent(selected.content);
       setName(selected.name);
     }
+    setManualMode(false);
     return () => {
       if (saveTimer.current) {
         clearTimeout(saveTimer.current);
@@ -85,6 +88,16 @@ export default function ContextEditor() {
       highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
     }
   }, []);
+
+  const handleImportFile = useCallback(
+    (fileContent: string) => {
+      setContent(fileContent);
+      if (selectedId && selectedId !== SYSTEM_HOSTS_ID) {
+        update(selectedId, undefined, fileContent);
+      }
+    },
+    [selectedId, update]
+  );
 
   if (selectedId === SYSTEM_HOSTS_ID) {
     return (
@@ -156,6 +169,18 @@ export default function ContextEditor() {
           {selected.enabled ? "Active" : "Inactive"}
         </span>
       </div>
+      {!content && !manualMode ? (
+        <div className="editor-dropzone-wrap">
+          <FileDropZone
+            title="Drag & drop a hosts file"
+            hint="or click to browse"
+            onImport={handleImportFile}
+          />
+          <button className="editor-manual-link" onClick={() => setManualMode(true)}>
+            or edit manually
+          </button>
+        </div>
+      ) : (
       <div className="editor-code-wrap">
         <pre ref={highlightRef} className="editor-highlight" aria-hidden="true">
           {content
@@ -187,6 +212,7 @@ export default function ContextEditor() {
           spellCheck={false}
         />
       </div>
+      )}
     </div>
   );
 }

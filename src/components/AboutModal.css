@@ -20,6 +20,13 @@
   min-width: 280px;
 }
 
+.about-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: 4px;
+}
+
 .about-title {
   font-size: 22px;
   font-weight: 700;

@@ -1,0 +1,17 @@
+[package]
+name = "bypass-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Bypass command-line companion: manage and inject credential contexts"
+
+[[bin]]
+name = "bypass"
+path = "src/main.rs"
+
+[dependencies]
+bypass-core = { path = "../bypass-core" }
+clap = { version = "4", features = ["derive"] }
+ratatui = "0.29"
+crossterm = "0.28"
+anyhow = "1"
+serde_json = { workspace = true }

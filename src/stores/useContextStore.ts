@@ -13,7 +13,6 @@ interface ContextStore {
   load: () => Promise<void>;
   loadSystemHosts: () => Promise<void>;
   create: (name: string) => Promise<void>;
-  importContext: (name: string, content: string) => Promise<void>;
   update: (id: string, name?: string, content?: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   toggle: (id: string) => Promise<void>;
@@ -63,20 +62,6 @@ export const useContextStore = create<ContextStore>((set) => ({
       set((s) => ({
         contexts: [...s.contexts, ctx],
         selectedId: ctx.id,
-        error: null,
-      }));
-    } catch (err) {
-      set({ error: String(err) });
-    }
-  },
-
-  importContext: async (name: string, content: string) => {
-    try {
-      const ctx = await api.createContext(name);
-      const updated = await api.updateContext(ctx.id, undefined, content);
-      set((s) => ({
-        contexts: [...s.contexts, updated],
-        selectedId: updated.id,
         error: null,
       }));
     } catch (err) {

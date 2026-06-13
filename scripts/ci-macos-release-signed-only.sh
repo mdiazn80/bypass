@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Install deps, build Tauri DMG firmado y notarizado (staple), normaliza nombre para el release.
+# Install deps, build a signed and notarized (stapled) Tauri DMG, and normalize its name for the release.
 # Run from desktop repo root. Requires macOS arm64, pnpm on PATH.
 #
-# Firma (CI): APPLE_CERTIFICATE (Base64 .p12), APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY
-#   → usar certificado "Developer ID Application" para distribución fuera de la Mac App Store.
-# Notarización (Tauri / notarytool): APPLE_ID (email), APPLE_PASSWORD (contraseña específica de app),
-#   APPLE_TEAM_ID (10 caracteres). Ver https://v2.tauri.app/distribute/sign/macos
+# Signing (CI): APPLE_CERTIFICATE (Base64 .p12), APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY
+#   -> use a "Developer ID Application" certificate for distribution outside the Mac App Store.
+# Notarization (Tauri / notarytool): APPLE_ID (email), APPLE_PASSWORD (app-specific password),
+#   APPLE_TEAM_ID (10 characters). See https://v2.tauri.app/distribute/sign/macos
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
