@@ -75,13 +75,10 @@ pub fn run() {
             commands::update_context,
             commands::delete_context,
             commands::toggle_context,
-            commands::get_hosts_content,
             commands::get_system_hosts,
             commands::get_config,
             commands::update_config,
-            commands::apply_contexts,
             commands::check_biometric_available,
-            commands::authenticate_biometric,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

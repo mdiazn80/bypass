@@ -53,3 +53,34 @@ body {
 ::selection {
   background: #90909040;
 }
+
+/* Error banner */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #3d1515;
+  border-top: 1px solid #6b2020;
+  color: #f87171;
+  font-size: 13px;
+}
+
+.error-banner-message {
+  flex: 1;
+  word-break: break-word;
+}
+
+.error-banner-dismiss {
+  background: none;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.error-banner-dismiss:hover {
+  color: #fca5a5;
+}

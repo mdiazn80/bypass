@@ -1,0 +1,70 @@
+---
+description: All code documentation and comments must be written in English. The app UI is multilingual.
+alwaysApply: true
+---
+
+# Documentation and Comments Language
+
+## Rule
+
+**All code-level content must be in English**, regardless of developer locale:
+
+- Source code comments (`//`, `/* */`, `/** */`, `#`)
+- Rust doc-comments (`///`, `//!`)
+- TypeScript JSDoc / TSDoc blocks
+- Commit messages
+- PR titles and descriptions
+- Branch names
+- README and all Markdown docs in the repo
+
+## App UI is Multilingual
+
+The application itself supports multiple languages. Localisation strings live in the UI layer and are **not** subject to this rule. User-facing text should use i18n keys, not hardcoded strings.
+
+```tsx
+// ❌ BAD — hardcoded UI string
+<button>Save context</button>
+
+// ✅ GOOD — i18n key
+<button>{t('context.save')}</button>
+```
+
+## Code Comments
+
+```rust
+// ❌ BAD
+// Aplica los contextos activos al archivo hosts
+fn apply_to_hosts(...) { ... }
+
+// ✅ GOOD
+// Applies all enabled contexts to the system hosts file.
+// Replaces the BYPASS-managed block; leaves user-owned entries untouched.
+fn apply_to_hosts(...) { ... }
+```
+
+```typescript
+// ❌ BAD
+// Carga los contextos desde el backend
+async function load() { ... }
+
+// ✅ GOOD
+// Fetches all contexts from the Rust backend and updates the store.
+async function load() { ... }
+```
+
+## Doc-comments
+
+```rust
+/// Builds the managed hosts block from the list of enabled contexts.
+///
+/// Returns an empty string if no contexts are enabled.
+fn build_managed_block(contexts: &[Context]) -> String { ... }
+```
+
+## Commit message examples
+
+```
+feat: apply hosts on context content update
+fix: revert persisted state when hosts write fails
+docs: fix README CI workflow filename reference
+```

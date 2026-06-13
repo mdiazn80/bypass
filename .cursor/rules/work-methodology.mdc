@@ -1,0 +1,52 @@
+---
+description: Work methodology, branching strategy and versioning for the Bypass project
+alwaysApply: true
+---
+
+# Work Methodology
+
+## Branching Strategy
+
+- `main` — stable, production-ready code only
+- `develop` — integration branch; all PRs target `develop`, never `main`
+- Feature branches: `feat/<short-description>` (e.g. `feat/hosts-rollback`)
+- Bug fixes: `fix/<short-description>` (e.g. `fix/toggle-state-sync`)
+- Chores: `chore/<short-description>` (e.g. `chore/update-deps`)
+- CI triggers releases from merges into `develop` → `main`
+
+## Versioning
+
+Format: `YY.M.PATCH` (e.g. `26.5.3` = June 2026, patch 3).
+
+Version must be kept in sync across **4 files** — always update all of them together:
+- `VERSION`
+- `package.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/tauri.conf.json`
+
+Use the CI script `scripts/ci-tag-version-push.sh` to bump; avoid manual edits.
+
+## Commit Messages
+
+Follow Conventional Commits:
+```
+feat: add hosts rollback on auth failure
+fix: sync editor state when context reloads
+chore: bump dependencies
+docs: update README CI workflow name
+```
+
+## Code Review Checklist
+
+Before opening a PR, verify:
+- [ ] No `unwrap()` added in Rust without justification
+- [ ] Errors surfaced to the user (toast/dialog), not swallowed
+- [ ] Dead code removed, not commented out
+- [ ] Hosts apply is transactional (apply before persist, or revert on failure)
+- [ ] README and docs reflect the actual behavior
+
+## Testing
+
+- Unit tests live in `src-tauri/src/` using `#[cfg(test)]` modules
+- Frontend integration tests are not yet set up — add them before shipping new critical paths
+- Always add a test for `hosts.rs` logic when modifying `build_managed_block` or `strip_managed_section`

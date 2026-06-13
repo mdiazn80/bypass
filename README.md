@@ -99,7 +99,7 @@ bypass/
 │   └── tauri.conf.json         # Tauri configuration
 └── .github/
     └── workflows/
-        └── release.yml         # CI: build binaries on merged PRs
+        └── version-tag-and-binary.yml  # CI: build binaries on merged PRs
 ```
 
 ## How It Works
@@ -136,12 +136,11 @@ JSON format:
 
 ## CI / CD
 
-A GitHub Actions workflow (`.github/workflows/release.yml`) builds binaries automatically when a pull request to `main` is merged. It produces artifacts for:
+A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces artifacts for:
 
 | Platform | Architecture | Artifacts |
 |----------|-------------|-----------|
 | macOS    | ARM64       | `.dmg`, `.app` |
-| macOS    | x86_64      | `.dmg`, `.app` |
 | Linux    | x86_64      | `.deb`, `.AppImage` |
 | Windows  | x86_64      | `.exe` (NSIS), `.msi` |
 

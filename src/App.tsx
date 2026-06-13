@@ -19,6 +19,8 @@ function App() {
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   const pendingUpdate = useRef<Update | null>(null);
   const loadContexts = useContextStore((s) => s.load);
+  const contextError = useContextStore((s) => s.error);
+  const clearContextError = useContextStore((s) => s.clearError);
   const loadConfig = useConfigStore((s) => s.load);
 
   async function runUpdateCheck(manual: boolean) {
@@ -44,12 +46,10 @@ function App() {
     loadConfig();
     runUpdateCheck(false);
 
-    const unlistenContexts = listen("contexts-changed", () => loadContexts());
     const unlistenAbout = listen("show-about", () => setShowAbout(true));
     const unlistenCheckUpdates = listen("check-for-updates", () => runUpdateCheck(true));
 
     return () => {
-      unlistenContexts.then((fn) => fn());
       unlistenAbout.then((fn) => fn());
       unlistenCheckUpdates.then((fn) => fn());
     };
@@ -114,6 +114,12 @@ function App() {
         )}
         {view === "settings" && <Settings />}
       </div>
+      {contextError && (
+        <div className="error-banner" role="alert">
+          <span className="error-banner-message">{contextError}</span>
+          <button className="error-banner-dismiss" onClick={clearContextError}>✕</button>
+        </div>
+      )}
       {updateState && (
         <UpdateBanner
           state={updateState}

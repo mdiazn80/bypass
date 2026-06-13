@@ -25,10 +25,6 @@ export async function toggleContext(id: string): Promise<Context> {
   return invoke("toggle_context", { id });
 }
 
-export async function getHostsContent(): Promise<string> {
-  return invoke("get_hosts_content");
-}
-
 export async function getSystemHosts(): Promise<string> {
   return invoke("get_system_hosts");
 }
@@ -44,14 +40,6 @@ export async function updateConfig(
   return invoke("update_config", { minimize_to_tray, start_minimized });
 }
 
-export async function applyContexts(): Promise<void> {
-  return invoke("apply_contexts");
-}
-
 export async function checkBiometricAvailable(): Promise<boolean> {
   return invoke("check_biometric_available");
-}
-
-export async function authenticateBiometric(): Promise<void> {
-  return invoke("authenticate_biometric");
 }

@@ -57,10 +57,6 @@ export function highlightHosts(text: string): React.ReactNode[] {
   });
 }
 
-function highlightSystemHosts(text: string): React.ReactNode[] {
-  return highlightHosts(text);
-}
-
 export default function ContextEditor() {
   const { contexts, selectedId, update, systemHosts } = useContextStore();
   const selected = contexts.find((c) => c.id === selectedId);
@@ -76,6 +72,11 @@ export default function ContextEditor() {
       setContent(selected.content);
       setName(selected.name);
     }
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+      }
+    };
   }, [selectedId]);
 
   const syncScroll = useCallback(() => {
@@ -92,7 +93,7 @@ export default function ContextEditor() {
           <h2 className="editor-name">System Hosts</h2>
           <span className="editor-status">Read-only</span>
         </div>
-        <pre className="editor-readonly">{highlightSystemHosts(systemHosts)}</pre>
+        <pre className="editor-readonly">{highlightHosts(systemHosts)}</pre>
       </div>
     );
   }
