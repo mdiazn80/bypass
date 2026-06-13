@@ -3,6 +3,7 @@ mod commands;
 mod credentials;
 mod hosts;
 mod models;
+mod secrets;
 mod state;
 mod storage;
 mod tray;

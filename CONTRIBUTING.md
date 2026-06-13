@@ -40,20 +40,18 @@ Artifacts are written under `src-tauri/target/release/bundle/`. For local builds
 
 ## Project layout
 
-The repository is a Cargo workspace plus the React frontend:
-
 - **`src/`**: React frontend, TypeScript, Zustand, Vite.
-- **`src-tauri/`**: Tauri GUI crate (commands, hosts file read/write, tray, credential commands).
-- **`crates/bypass-core/`**: shared library: encrypted credential vault (`SecretBackend` trait + `HybridBackend`). Used by the GUI.
+- **`src-tauri/`**: Tauri app crate (commands, hosts file read/write, tray, credential commands).
+- **`src-tauri/src/secrets/`**: encrypted credential vault (`SecretBackend` trait + `HybridBackend`, crypto, keystore).
 
-Build and test the Rust workspace with:
+Build and test the Rust crate with:
 
 ```bash
-cargo test --workspace      # unit tests (bypass-core)
-pnpm tauri dev              # the GUI (resolves the workspace from the repo root)
+cargo test --manifest-path src-tauri/Cargo.toml   # unit tests
+pnpm tauri dev                                     # the GUI
 ```
 
-Before changing sensitive hosts-related behavior, review `src-tauri/src/hosts.rs` and the managed-block markers described in the README. Before changing credential storage, review `crates/bypass-core/` (crypto, keystore, backend) and keep secret values out of logs.
+Before changing sensitive hosts-related behavior, review `src-tauri/src/hosts.rs` and the managed-block markers described in the README. Before changing credential storage, review `src-tauri/src/secrets/` (crypto, keystore, backend) and keep secret values out of logs.
 
 ## Style and quality
 

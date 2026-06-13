@@ -4,10 +4,10 @@ use std::path::PathBuf;
 
 use zeroize::Zeroizing;
 
-use crate::crypto::{self, KEY_LEN};
-use crate::error::BypassError;
-use crate::keystore;
-use crate::model::{ContextEntry, CredentialContext, VaultData};
+use super::crypto::{self, KEY_LEN};
+use super::error::BypassError;
+use super::keystore;
+use super::model::{ContextEntry, CredentialContext, VaultData};
 
 /// Abstract, swappable storage surface for secret values.
 ///
@@ -19,7 +19,6 @@ pub trait SecretBackend: Send + Sync {
     fn set(&self, context: &str, key: &str, value: &str) -> Result<(), BypassError>;
     fn delete(&self, context: &str, key: &str) -> Result<(), BypassError>;
     fn list_keys(&self, context: &str) -> Result<Vec<String>, BypassError>;
-    fn list_contexts(&self) -> Result<Vec<String>, BypassError>;
 }
 
 /// Hybrid backend: an OS-keychain-held master key encrypts an on-disk store
@@ -61,8 +60,8 @@ impl HybridBackend {
         })
     }
 
-    /// Builds a backend with an explicitly provided master key. Used as a
-    /// fallback when the OS keychain is unavailable.
+    /// Builds a backend with an explicitly provided master key (tests only).
+    #[cfg(test)]
     pub fn with_key(master_key: [u8; KEY_LEN]) -> Self {
         Self {
             store_path: default_store_path(),
@@ -70,7 +69,8 @@ impl HybridBackend {
         }
     }
 
-    /// Overrides the store path (primarily for tests and import/export).
+    /// Overrides the store path (tests only).
+    #[cfg(test)]
     pub fn with_store_path(mut self, path: PathBuf) -> Self {
         self.store_path = path;
         self
@@ -208,10 +208,6 @@ impl SecretBackend for HybridBackend {
             .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
         Ok(entry.vars.keys().cloned().collect())
     }
-
-    fn list_contexts(&self) -> Result<Vec<String>, BypassError> {
-        Ok(self.load()?.contexts.into_keys().collect())
-    }
 }
 
 #[cfg(test)]
@@ -224,7 +220,7 @@ mod tests {
     }
 
     fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("bypass_core_test_{}_{}", tag, std::process::id()));
+        let dir = std::env::temp_dir().join(format!("bypass_secrets_test_{}_{}", tag, std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -251,7 +247,8 @@ mod tests {
         assert_eq!(backend.list_keys("dev").unwrap(), vec!["A", "B"]);
         backend.delete("dev", "A").unwrap();
         assert_eq!(backend.list_keys("dev").unwrap(), vec!["B"]);
-        assert_eq!(backend.list_contexts().unwrap(), vec!["dev"]);
+        let names: Vec<String> = backend.context_meta().unwrap().into_iter().map(|c| c.name).collect();
+        assert_eq!(names, vec!["dev"]);
         fs::remove_dir_all(&dir).ok();
     }
 

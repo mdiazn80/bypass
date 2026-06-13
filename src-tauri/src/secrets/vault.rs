@@ -1,6 +1,6 @@
-use crate::backend::{HybridBackend, SecretBackend};
-use crate::error::BypassError;
-use crate::model::CredentialContext;
+use super::backend::{HybridBackend, SecretBackend};
+use super::error::BypassError;
+use super::model::CredentialContext;
 
 /// High-level entry point used by the GUI.
 ///
@@ -18,7 +18,8 @@ impl Vault {
         })
     }
 
-    /// Builds a vault around an already-constructed backend (tests, fallbacks).
+    /// Builds a vault around an already-constructed backend (tests only).
+    #[cfg(test)]
     pub fn with_backend(backend: HybridBackend) -> Self {
         Self { backend }
     }
@@ -63,7 +64,7 @@ impl Vault {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::crypto::KEY_LEN;
+    use super::super::crypto::KEY_LEN;
     use std::fs;
 
     fn vault(dir: &std::path::Path) -> Vault {

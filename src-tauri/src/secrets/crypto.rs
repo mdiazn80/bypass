@@ -4,7 +4,7 @@ use rand::rngs::OsRng;
 use rand::RngCore;
 use zeroize::Zeroizing;
 
-use crate::error::BypassError;
+use super::error::BypassError;
 
 /// Length of the symmetric master key in bytes.
 pub const KEY_LEN: usize = 32;

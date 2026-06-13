@@ -2,8 +2,8 @@ use base64::Engine;
 use keyring::Entry;
 use zeroize::Zeroizing;
 
-use crate::crypto::{self, KEY_LEN};
-use crate::error::BypassError;
+use super::crypto::{self, KEY_LEN};
+use super::error::BypassError;
 
 const SERVICE: &str = "com.mdiazn80.bypass";
 const ACCOUNT: &str = "master-key";

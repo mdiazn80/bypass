@@ -74,7 +74,6 @@ The `clean` tasks use `rm -rf`; on Windows, use Git Bash, WSL, or run the equiva
 
 ```
 bypass/
-├── Cargo.toml                  # Cargo workspace manifest
 ├── src/                        # Frontend (React + TypeScript)
 │   ├── components/
 │   │   ├── TopBar.tsx          # Navigation: Hosts / Credentials / Settings
@@ -92,7 +91,8 @@ bypass/
 │   │   └── useConfigStore.ts      # App config state
 │   └── services/
 │       └── tauri.ts            # Tauri IPC bindings
-├── src-tauri/                  # Tauri GUI crate (Rust)
+├── src-tauri/                  # Tauri app crate (Rust)
+│   ├── Cargo.toml              # Crate manifest
 │   ├── src/
 │   │   ├── lib.rs              # App setup and plugin registration
 │   │   ├── commands.rs         # Hosts/config Tauri commands
@@ -102,15 +102,13 @@ bypass/
 │   │   ├── tray.rs             # System tray menu
 │   │   ├── models.rs           # Data models (Context, AppConfig)
 │   │   ├── storage.rs          # JSON file persistence
-│   │   └── state.rs            # Shared app state
+│   │   ├── state.rs            # Shared app state
+│   │   └── secrets/            # Encrypted credential vault
+│   │       ├── backend.rs      # SecretBackend trait + HybridBackend
+│   │       ├── crypto.rs       # ChaCha20-Poly1305 seal/open
+│   │       ├── keystore.rs     # OS keychain master key + env fallback
+│   │       └── vault.rs        # High-level API
 │   └── tauri.conf.json         # Tauri configuration
-├── crates/
-│   └── bypass-core/            # Shared: encrypted credential vault
-│       └── src/
-│           ├── backend.rs      # SecretBackend trait + HybridBackend
-│           ├── crypto.rs       # ChaCha20-Poly1305 seal/open
-│           ├── keystore.rs     # OS keychain master key + env fallback
-│           └── vault.rs        # High-level API
 └── .github/
     └── workflows/
         └── version-tag-and-binary.yml  # CI: build binaries on merged PRs
@@ -178,7 +176,7 @@ A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) build
 ## Tech Stack
 
 - **Frontend**: React 19, TypeScript, Zustand, Vite
-- **Backend**: Rust, Tauri 2 (Cargo workspace: `bypass-core` + GUI)
+- **Backend**: Rust, Tauri 2
 - **Crypto**: ChaCha20-Poly1305, OS keychain (`keyring`)
 - **Plugins**: `tauri-plugin-dialog`, `tauri-plugin-fs`, `tauri-plugin-opener`, `tauri-plugin-autostart`
 

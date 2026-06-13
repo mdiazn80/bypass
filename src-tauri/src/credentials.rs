@@ -1,4 +1,4 @@
-use bypass_core::{BypassError, CredentialContext, Vault};
+use crate::secrets::{BypassError, CredentialContext, Vault};
 use tauri::State;
 
 use crate::state::AppState;

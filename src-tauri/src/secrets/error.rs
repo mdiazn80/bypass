@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Unified error type for all `bypass-core` operations.
+/// Unified error type for all credential vault operations.
 #[derive(Debug, Error)]
 pub enum BypassError {
     /// The secret backend (OS keychain) could not be reached.

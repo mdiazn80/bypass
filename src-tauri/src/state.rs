@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use bypass_core::Vault;
+use crate::secrets::Vault;
 
 use crate::models::{AppConfig, Context};
 
