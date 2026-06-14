@@ -6,6 +6,7 @@ interface ConfigStore {
   config: AppConfig;
   autostart: boolean;
   shellStatus: ShellStatus | null;
+  shellError: string | null;
   load: () => Promise<void>;
   update: (minimize_to_tray?: boolean, start_minimized?: boolean) => Promise<void>;
   setAutostart: (enabled: boolean) => Promise<void>;
@@ -43,6 +44,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   config: DEFAULT_CONFIG,
   autostart: false,
   shellStatus: null,
+  shellError: null,
 
   load: async () => {
     const config = await api.getConfig();
@@ -79,23 +81,35 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
   },
 
   setShellAgentEnabled: async (enabled: boolean) => {
-    const shellStatus = await api.setShellAgentEnabled(enabled);
-    set({ shellStatus });
-    // Enabling the agent also enables autostart so it is available at login.
-    if (enabled) {
-      const result = await setAutostartEnabled(true);
-      set({ autostart: result });
+    try {
+      const shellStatus = await api.setShellAgentEnabled(enabled);
+      set({ shellStatus, shellError: null });
+      // Enabling the agent also enables autostart so it is available at login.
+      if (enabled) {
+        const result = await setAutostartEnabled(true);
+        set({ autostart: result });
+      }
+    } catch (err) {
+      set({ shellError: String(err) });
     }
   },
 
   installShell: async () => {
-    const shellStatus = await api.installShellIntegration();
-    set({ shellStatus });
+    try {
+      const shellStatus = await api.installShellIntegration();
+      set({ shellStatus, shellError: null });
+    } catch (err) {
+      set({ shellError: String(err) });
+    }
   },
 
   uninstallShell: async () => {
-    const shellStatus = await api.uninstallShellIntegration();
-    set({ shellStatus });
+    try {
+      const shellStatus = await api.uninstallShellIntegration();
+      set({ shellStatus, shellError: null });
+    } catch (err) {
+      set({ shellError: String(err) });
+    }
   },
 
   setActiveContext: async (name: string | null) => {

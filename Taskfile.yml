@@ -20,7 +20,9 @@ tasks:
   build:
     desc: Full release (requires TAURI_SIGNING_PRIVATE_KEY if createUpdaterArtifacts is enabled)
     cmds:
-      - pnpm tauri build
+      # Stage the bypass-shell sidecar so externalBin bundles it with the app.
+      - bash scripts/build-shell-sidecar.sh
+      - pnpm tauri build -c src-tauri/tauri.bundle.conf.json
 
   build:local:
     desc: Local build without updater artifacts or code signing (avoids TAURI_SIGNING_PRIVATE_KEY)
@@ -29,7 +31,8 @@ tasks:
     env:
       CI: "true"
     cmds:
-      - pnpm tauri build --no-sign -c '{"bundle":{"createUpdaterArtifacts":false}}'
+      - bash scripts/build-shell-sidecar.sh
+      - pnpm tauri build --no-sign -c src-tauri/tauri.bundle.conf.json -c '{"bundle":{"createUpdaterArtifacts":false}}'
 
   build:frontend:
     desc: Build only the frontend (tsc + vite build), without packaging Tauri

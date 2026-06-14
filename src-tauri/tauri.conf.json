@@ -5,7 +5,7 @@
   "version": "26.6.1",
   "identifier": "com.mdiazn80.bypass",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "cargo build -p bypass-shell && pnpm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
@@ -39,7 +39,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlEOUJBNjc1QUIyM0EzRTIKUldUaW95T3JkYWFiblpZbUExVEdTR25ld3FqUXNoWjZ6aU12SWo2cytCZFZYWTF6N0tRL0dtdVUK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREMDAyOTEwODMyOTAwMjUKUldRbEFDbURFQ2tBVFFTVm91aElWaUswcEhmanRZUS9iNXB0RDlkbXJWclAyMWVCSGp5bWQ5VWcK",
       "endpoints": [
         "https://github.com/mdiazn80/bypass/releases/latest/download/latest.json"
       ]

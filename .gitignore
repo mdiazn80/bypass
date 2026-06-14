@@ -25,3 +25,6 @@ dist-ssr
 .tauri
 
 target
+
+# Staged Tauri sidecar binaries (built on demand from crates/bypass-shell)
+src-tauri/binaries

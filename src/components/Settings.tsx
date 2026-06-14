@@ -6,6 +6,7 @@ export default function Settings() {
   const { config, autostart, update, setAutostart } = useConfigStore();
   const {
     shellStatus,
+    shellError,
     loadShellStatus,
     setShellAgentEnabled,
     installShell,
@@ -138,6 +139,8 @@ export default function Settings() {
               : "Agent stopped"}
             {installed ? " · hook installed" : " · hook not installed"}
           </div>
+
+          {shellError && <div className="settings-error">{shellError}</div>}
         </div>
       </div>
     </div>

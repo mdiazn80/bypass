@@ -5,9 +5,6 @@ name: Version tag and binary
 #
 # Builds and uploads:
 # - macOS Apple Silicon (signed + notarized DMG + app.tar.gz for updater) — arm64
-# - Linux Debian/Ubuntu — .deb + .AppImage
-# - Linux Fedora/RHEL family — .tar.gz
-# - Windows — NSIS installer
 # - latest.json — updater manifest consumed by tauri-plugin-updater
 #
 # Notarization: APPLE_ID (email), APPLE_PASSWORD (app-specific password, appleid.apple.com), APPLE_TEAM_ID.
@@ -88,7 +85,7 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@v2.9.1
         with:
-          workspaces: src-tauri
+          workspaces: .
 
       - name: Build, sign, notarize, normalize DMG
         run: bash scripts/ci-macos-release-signed-only.sh
@@ -102,7 +99,7 @@ jobs:
           import glob, json, os, shutil
 
           tag = os.environ["TAG"]
-          bundle = "src-tauri/target/release/bundle"
+          bundle = "target/release/bundle"
 
           tars = glob.glob(f"{bundle}/macos/*.app.tar.gz")
           if not tars:
@@ -129,7 +126,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.tag.outputs.tag }}
-          files: src-tauri/target/release/bundle/dmg/Bypass-arm64.dmg
+          files: target/release/bundle/dmg/Bypass-arm64.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -147,226 +144,9 @@ jobs:
           name: updater-darwin-aarch64
           path: updater-darwin-aarch64.json
 
-  build-linux-debian:
-    name: Build desktop Linux (Debian/Ubuntu)
-    needs: tag
-    runs-on: ubuntu-latest
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
-
-      - name: pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
-      - name: Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2.9.1
-        with:
-          workspaces: src-tauri
-
-      - name: Package
-        run: bash scripts/ci-linux-debian-release.sh
-
-      - name: Prepare Linux updater artifact
-        env:
-          TAG: ${{ needs.tag.outputs.tag }}
-        run: |
-          python3 << 'PY'
-          import glob, json, os
-
-          tag = os.environ["TAG"]
-          bundle = "src-tauri/target/release/bundle"
-
-          sigs = glob.glob(f"{bundle}/appimage/*.AppImage.sig")
-          if not sigs:
-              raise SystemExit(f"No .AppImage.sig found under {bundle}/appimage/")
-
-          with open(sigs[0]) as f:
-              signature = f.read().strip()
-
-          fragment = {
-              "url": f"https://github.com/mdiazn80/bypass/releases/download/{tag}/desktop-linux-debian-amd64.AppImage",
-              "signature": signature,
-          }
-          with open("updater-linux-x86_64.json", "w") as f:
-              json.dump(fragment, f)
-
-          print(f"Linux updater artifact: {os.path.basename(sigs[0])}")
-          PY
-
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: |
-            dist/desktop-linux-debian-amd64.deb
-            dist/desktop-linux-debian-amd64.AppImage
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload linux-x86_64 updater fragment
-        uses: actions/upload-artifact@v4
-        with:
-          name: updater-linux-x86_64
-          path: updater-linux-x86_64.json
-
-  build-linux-redhat:
-    name: Build desktop Linux (Fedora/RHEL family)
-    needs: tag
-    runs-on: ubuntu-latest
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-    container:
-      image: fedora:40
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Install git and curl
-        run: dnf install -y git ca-certificates curl
-
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
-
-      - name: pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
-      - name: Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Package
-        run: bash scripts/ci-linux-redhat-release.sh
-
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: dist/desktop-linux-redhat-amd64.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build-windows:
-    name: Build desktop Windows
-    needs: tag
-    runs-on: windows-latest
-    env:
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
-
-      - name: pnpm
-        uses: pnpm/action-setup@v5
-        with:
-          version: 10
-
-      - name: Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cargo cache
-        uses: Swatinem/rust-cache@v2.9.1
-        with:
-          workspaces: src-tauri
-
-      - name: Install protoc
-        run: choco install protoc -y
-
-      - name: Build
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm tauri build
-
-      - name: Prepare Windows updater artifact
-        env:
-          TAG: ${{ needs.tag.outputs.tag }}
-        run: |
-          mkdir -p dist
-          python3 << 'PY'
-          import glob, json, os, shutil
-
-          tag = os.environ["TAG"]
-          bundle = "src-tauri/target/release/bundle"
-
-          exes = glob.glob(f"{bundle}/nsis/*-setup.exe")
-          if not exes:
-              raise SystemExit(f"No NSIS setup.exe found under {bundle}/nsis/")
-          nsis_exe = exes[0]
-          sig_path = nsis_exe + ".sig"
-
-          shutil.copy(nsis_exe, "dist/Bypass-windows-x64-setup.exe")
-
-          with open(sig_path) as f:
-              signature = f.read().strip()
-
-          fragment = {
-              "url": f"https://github.com/mdiazn80/bypass/releases/download/{tag}/Bypass-windows-x64-setup.exe",
-              "signature": signature,
-          }
-          with open("updater-windows-x86_64.json", "w") as f:
-              json.dump(fragment, f)
-
-          print(f"Windows updater artifact: {os.path.basename(nsis_exe)}")
-          PY
-
-      - name: Upload Windows installer to release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ needs.tag.outputs.tag }}
-          files: dist/Bypass-windows-x64-setup.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload windows-x86_64 updater fragment
-        uses: actions/upload-artifact@v4
-        with:
-          name: updater-windows-x86_64
-          path: updater-windows-x86_64.json
-
   publish-updater:
     name: Publish updater manifest (latest.json)
-    needs: [tag, build-macos-arm64, build-linux-debian, build-windows]
+    needs: [tag, build-macos-arm64]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -380,18 +160,6 @@ jobs:
         with:
           name: updater-darwin-aarch64
           path: darwin-aarch64/
-
-      - name: Download linux-x86_64 updater fragment
-        uses: actions/download-artifact@v4
-        with:
-          name: updater-linux-x86_64
-          path: linux-x86_64/
-
-      - name: Download windows-x86_64 updater fragment
-        uses: actions/download-artifact@v4
-        with:
-          name: updater-windows-x86_64
-          path: windows-x86_64/
 
       - name: Assemble latest.json
         env:

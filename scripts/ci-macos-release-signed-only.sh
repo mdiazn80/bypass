@@ -31,6 +31,7 @@ brew install protobuf
 
 pnpm install --frozen-lockfile
 
-pnpm tauri build
+bash scripts/build-shell-sidecar.sh
+pnpm tauri build -c src-tauri/tauri.bundle.conf.json
 
 bash scripts/rename-release-dmg.sh
