@@ -6,7 +6,7 @@ these secrets from the repository's GitHub Actions secrets:
 
 | Secret | Used for | Where it comes from |
 | --- | --- | --- |
-| `TAURI_SIGNING_PRIVATE_KEY` | Signs updater artifacts (all platforms) | Tauri signer key pair (generated locally) |
+| `TAURI_SIGNING_PRIVATE_KEY` | Signs the macOS updater artifact | Tauri signer key pair (generated locally) |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password that protects the private key | Chosen when generating the key |
 | `APPLE_CERTIFICATE` | Code-signing certificate (`.p12`, Base64) | Apple "Developer ID Application" certificate |
 | `APPLE_CERTIFICATE_PASSWORD` | Password of the exported `.p12` | Chosen when exporting from Keychain |

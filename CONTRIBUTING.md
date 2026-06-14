@@ -14,10 +14,11 @@ By participating in this project, you agree to follow our [Code of Conduct](CODE
 
 ## Prerequisites
 
+- macOS (Apple Silicon)
 - [Node.js](https://nodejs.org/) ≥ 22  
 - [pnpm](https://pnpm.io/) ≥ 10  
 - [Rust](https://www.rust-lang.org/tools/install) (stable)  
-- Tauri dependencies for your platform: [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
+- Tauri macOS dependencies: [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 Optional: [Task](https://taskfile.dev/) for targets defined in `Taskfile.yml`.
 
@@ -61,7 +62,7 @@ Before changing sensitive hosts-related behavior, review `src-tauri/src/hosts.rs
 - **Rust**: follow common ecosystem conventions (`cargo fmt`, `cargo clippy` where applicable).
 - **Commits**: use clear messages; avoid large, context-free commits.
 
-If your change touches security (privilege elevation, file I/O, IPC), describe that explicitly in the pull request to speed up review.
+If your change touches security (privilege elevation, file I/O, IPC, Touch ID, Keychain), describe that explicitly in the pull request to speed up review.
 
 ## Pull requests
 

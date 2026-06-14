@@ -1,6 +1,6 @@
 # Bypass
 
-A lightweight, cross-platform hosts file manager built with [Tauri 2](https://tauri.app/), React and TypeScript.
+A macOS hosts file manager built with [Tauri 2](https://tauri.app/), React and TypeScript.
 
 Bypass lets you create, organize and toggle groups of hosts entries (called **Contexts**) without manually editing `/etc/hosts`. Each context can be enabled or disabled independently, and the system hosts file is updated automatically with elevated privileges.
 
@@ -11,10 +11,9 @@ Bypass lets you create, organize and toggle groups of hosts entries (called **Co
 - **Syntax highlighting** &mdash; IPs, hostnames and comments are color-coded in the editor.
 - **System Hosts view** &mdash; Read-only preview of the current `/etc/hosts` file, auto-refreshed when contexts change.
 - **Import / Export** &mdash; Share contexts as JSON files using native OS file dialogs.
-- **Touch ID support** &mdash; Biometric authentication on macOS to authorize hosts file changes (no double prompt).
+- **Touch ID support** &mdash; Biometric authentication to authorize hosts file changes (no double prompt).
 - **System tray** &mdash; Minimize to tray and keep running in the background.
 - **Autostart** &mdash; Optionally launch at login.
-- **Cross-platform** &mdash; macOS (ARM & Intel), Linux and Windows.
 
 ## Screenshots
 
@@ -24,10 +23,11 @@ Bypass lets you create, organize and toggle groups of hosts entries (called **Co
 
 ### Prerequisites
 
+- macOS (Apple Silicon)
 - [Node.js](https://nodejs.org/) >= 22
 - [pnpm](https://pnpm.io/) >= 10
 - [Rust](https://www.rust-lang.org/tools/install) (stable)
-- Platform-specific Tauri dependencies &mdash; see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
+- Tauri macOS dependencies &mdash; see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)
 
 ### Install
 
@@ -68,7 +68,7 @@ If you use [Task](https://taskfile.dev/) (`go-task`), common commands are wrappe
 | Clean all | `task clean:all` | Runs `task clean`, then removes `node_modules/`. |
 | Tauri info | `task info` | Runs `pnpm tauri info` (toolchain and environment summary). |
 
-The `clean` tasks use `rm -rf`; on Windows, use Git Bash, WSL, or run the equivalent commands in PowerShell.
+The `clean` tasks use `rm -rf` and work as-is on macOS.
 
 ## Project Structure
 
@@ -152,7 +152,7 @@ Bypass can manage groups of sensitive environment variables (a *credential conte
 
 ### Storage (hybrid backend)
 
-- A random 32-byte master key is generated on first use and stored in the **OS keychain** (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows).
+- A random 32-byte master key is generated on first use and stored in the **macOS Keychain**.
 - Contexts and variables are stored in an encrypted file (`store.enc`) next to the app data, sealed with **ChaCha20-Poly1305** using that master key.
 - Secret values are never written to disk in plaintext, and the master key never appears in the file.
 
@@ -161,27 +161,22 @@ In the GUI, open the **Credentials** tab to create contexts and add/edit/delete 
 ### Security notes
 
 - Secret values are never written to disk in plaintext, and the master key never appears in the encrypted store.
-- If the OS keychain is unavailable (e.g. headless Linux without a Secret Service), set `BYPASS_MASTER_KEY` to a base64-encoded 32-byte key and Bypass will use it instead of the keychain.
 
 ## CI / CD
 
-A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces artifacts for all supported platforms and signs them with the secrets listed below.
+A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces a signed and notarized macOS release, along with a `latest.json` updater manifest.
 
 For a step-by-step guide on generating the key pair and obtaining every required secret, see **[docs/release-signing.md](docs/release-signing.md)**.
 
-It produces artifacts for:
-
 | Platform | Architecture | Artifacts |
 |----------|-------------|-----------|
-| macOS    | ARM64       | `.dmg`, `.app` |
-| Linux    | x86_64      | `.deb`, `.AppImage` |
-| Windows  | x86_64      | `.exe` (NSIS), `.msi` |
+| macOS    | ARM64 (Apple Silicon) | `.dmg`, `.app.tar.gz` |
 
 ## Tech Stack
 
 - **Frontend**: React 19, TypeScript, Zustand, Vite
 - **Backend**: Rust, Tauri 2
-- **Crypto**: ChaCha20-Poly1305, OS keychain (`keyring`)
+- **Crypto**: ChaCha20-Poly1305, macOS Keychain (`keyring`)
 - **Plugins**: `tauri-plugin-dialog`, `tauri-plugin-fs`, `tauri-plugin-opener`, `tauri-plugin-autostart`
 
 ## License
