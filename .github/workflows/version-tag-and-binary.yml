@@ -88,7 +88,7 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@v2.9.1
         with:
-          workspaces: src-tauri
+          workspaces: .
 
       - name: Build, sign, notarize, normalize DMG
         run: bash scripts/ci-macos-release-signed-only.sh
@@ -102,7 +102,7 @@ jobs:
           import glob, json, os, shutil
 
           tag = os.environ["TAG"]
-          bundle = "src-tauri/target/release/bundle"
+          bundle = "target/release/bundle"
 
           tars = glob.glob(f"{bundle}/macos/*.app.tar.gz")
           if not tars:
@@ -129,7 +129,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.tag.outputs.tag }}
-          files: src-tauri/target/release/bundle/dmg/Bypass-arm64.dmg
+          files: target/release/bundle/dmg/Bypass-arm64.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -179,7 +179,7 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@v2.9.1
         with:
-          workspaces: src-tauri
+          workspaces: .
 
       - name: Package
         run: bash scripts/ci-linux-debian-release.sh
@@ -192,7 +192,7 @@ jobs:
           import glob, json, os
 
           tag = os.environ["TAG"]
-          bundle = "src-tauri/target/release/bundle"
+          bundle = "target/release/bundle"
 
           sigs = glob.glob(f"{bundle}/appimage/*.AppImage.sig")
           if not sigs:
@@ -308,15 +308,17 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@v2.9.1
         with:
-          workspaces: src-tauri
+          workspaces: .
 
       - name: Install protoc
         run: choco install protoc -y
 
       - name: Build
+        shell: bash
         run: |
           pnpm install --frozen-lockfile
-          pnpm tauri build
+          bash scripts/build-shell-sidecar.sh
+          pnpm tauri build -c src-tauri/tauri.bundle.conf.json
 
       - name: Prepare Windows updater artifact
         env:
@@ -327,7 +329,7 @@ jobs:
           import glob, json, os, shutil
 
           tag = os.environ["TAG"]
-          bundle = "src-tauri/target/release/bundle"
+          bundle = "target/release/bundle"
 
           exes = glob.glob(f"{bundle}/nsis/*-setup.exe")
           if not exes:

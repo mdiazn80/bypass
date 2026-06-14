@@ -42,11 +42,12 @@ else
 fi
 
 pnpm install --frozen-lockfile
+bash scripts/build-shell-sidecar.sh
 # AppImage uses linuxdeploy (FUSE/strip/glibc); it often fails in Fedora containers. Debian/Ubuntu CI
 # already ships deb + AppImage; this job targets RHEL/Fedora with the native rpm bundle only.
-pnpm tauri build --config '{"bundle":{"targets":["rpm"]}}'
+pnpm tauri build -c src-tauri/tauri.bundle.conf.json --config '{"bundle":{"targets":["rpm"]}}'
 
-BUNDLE="${REPO_ROOT}/src-tauri/target/release/bundle"
+BUNDLE="${REPO_ROOT}/target/release/bundle"
 if [[ ! -d "${BUNDLE}" ]]; then
   echo "ERROR = Tauri bundle directory missing at ${BUNDLE}" >&2
   exit 1

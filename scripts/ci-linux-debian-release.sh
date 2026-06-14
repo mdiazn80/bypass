@@ -29,9 +29,10 @@ sudo apt-get install -y --no-install-recommends \
   xdg-utils
 
 pnpm install --frozen-lockfile
-pnpm tauri build
+bash scripts/build-shell-sidecar.sh
+pnpm tauri build -c src-tauri/tauri.bundle.conf.json
 
-BUNDLE="${REPO_ROOT}/src-tauri/target/release/bundle"
+BUNDLE="${REPO_ROOT}/target/release/bundle"
 if [[ ! -d "${BUNDLE}" ]]; then
   echo "ERROR = Tauri bundle directory missing at ${BUNDLE}" >&2
   exit 1

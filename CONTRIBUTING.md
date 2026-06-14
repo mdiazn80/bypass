@@ -36,7 +36,9 @@ Production build:
 pnpm tauri build
 ```
 
-Artifacts are written under `src-tauri/target/release/bundle/`. For local builds without signing or updater artifacts, you can use `task build:local` if Task is installed (see the README).
+Artifacts are written under `target/release/bundle/`. For local builds without signing or updater artifacts, you can use `task build:local` if Task is installed (see the README).
+
+To set up the signing secrets required for a full release build, follow the instructions in **[docs/release-signing.md](docs/release-signing.md)**.
 
 ## Project layout
 

@@ -6,7 +6,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 cd "${REPO_ROOT}"
 
-DMG_DIR="src-tauri/target/release/bundle/dmg"
+DMG_DIR="target/release/bundle/dmg"
 TARGET_NAME="Bypass-arm64.dmg"
 
 if [ ! -d "${DMG_DIR}" ]; then

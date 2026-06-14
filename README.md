@@ -49,7 +49,7 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-Binaries are generated in `src-tauri/target/release/bundle/`.
+Binaries are generated in `target/release/bundle/`.
 
 ### Taskfile
 
@@ -165,7 +165,11 @@ In the GUI, open the **Credentials** tab to create contexts and add/edit/delete 
 
 ## CI / CD
 
-A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces artifacts for:
+A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces artifacts for all supported platforms and signs them with the secrets listed below.
+
+For a step-by-step guide on generating the key pair and obtaining every required secret, see **[docs/release-signing.md](docs/release-signing.md)**.
+
+It produces artifacts for:
 
 | Platform | Architecture | Artifacts |
 |----------|-------------|-----------|
