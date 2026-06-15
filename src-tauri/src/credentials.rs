@@ -46,7 +46,7 @@ pub fn update_credential_context(
 
 /// Renames a credential context. All variables are preserved under the new name.
 /// Returns an error if `new_name` is already in use.
-#[tauri::command]
+#[tauri::command(rename_all = "snake_case")]
 pub fn rename_credential_context(
     state: State<AppState>,
     old_name: String,

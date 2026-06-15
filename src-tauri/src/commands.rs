@@ -141,20 +141,16 @@ pub fn get_config(state: State<AppState>) -> AppConfig {
     state.config.lock().unwrap().clone()
 }
 
-/// Updates one or more app configuration fields and persists the result.
-#[tauri::command]
+/// Updates app configuration fields and persists the result.
+#[tauri::command(rename_all = "snake_case")]
 pub fn update_config(
     state: State<AppState>,
-    minimize_to_tray: Option<bool>,
-    start_minimized: Option<bool>,
+    minimize_to_tray: bool,
+    start_minimized: bool,
 ) -> Result<AppConfig, String> {
     let mut config = state.config.lock().map_err(|e| e.to_string())?;
-    if let Some(v) = minimize_to_tray {
-        config.minimize_to_tray = v;
-    }
-    if let Some(v) = start_minimized {
-        config.start_minimized = v;
-    }
+    config.minimize_to_tray = minimize_to_tray;
+    config.start_minimized = start_minimized;
     let updated = config.clone();
     storage::save_config(&updated)?;
     Ok(updated)

@@ -38,8 +38,8 @@ export async function getConfig(): Promise<AppConfig> {
 }
 
 export async function updateConfig(
-  minimize_to_tray?: boolean,
-  start_minimized?: boolean
+  minimize_to_tray: boolean,
+  start_minimized: boolean,
 ): Promise<AppConfig> {
   return invoke("update_config", { minimize_to_tray, start_minimized });
 }

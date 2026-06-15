@@ -53,7 +53,7 @@ export default function Settings() {
               <input
                 type="checkbox"
                 checked={config.minimize_to_tray}
-                onChange={(e) => update(e.target.checked, undefined)}
+                onChange={(e) => update(e.target.checked, config.start_minimized)}
               />
               <span className="settings-toggle-slider" />
             </span>
@@ -68,7 +68,7 @@ export default function Settings() {
               <input
                 type="checkbox"
                 checked={config.start_minimized}
-                onChange={(e) => update(undefined, e.target.checked)}
+                onChange={(e) => update(config.minimize_to_tray, e.target.checked)}
               />
               <span className="settings-toggle-slider" />
             </span>

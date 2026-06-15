@@ -8,7 +8,7 @@ interface ConfigStore {
   shellStatus: ShellStatus | null;
   shellError: string | null;
   load: () => Promise<void>;
-  update: (minimize_to_tray?: boolean, start_minimized?: boolean) => Promise<void>;
+  update: (minimize_to_tray: boolean, start_minimized: boolean) => Promise<void>;
   setAutostart: (enabled: boolean) => Promise<void>;
   loadShellStatus: () => Promise<void>;
   setShellAgentEnabled: (enabled: boolean) => Promise<void>;
@@ -61,9 +61,15 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     await get().loadShellStatus();
   },
 
-  update: async (minimize_to_tray?: boolean, start_minimized?: boolean) => {
-    const config = await api.updateConfig(minimize_to_tray, start_minimized);
-    set({ config });
+  update: async (minimize_to_tray: boolean, start_minimized: boolean) => {
+    const previous = get().config;
+    try {
+      const config = await api.updateConfig(minimize_to_tray, start_minimized);
+      set({ config });
+    } catch (err) {
+      console.error("[config] update_config failed:", err);
+      set({ config: previous });
+    }
   },
 
   setAutostart: async (enabled: boolean) => {
