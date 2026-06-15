@@ -40,6 +40,9 @@ interprocess = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { version = "3", features = ["apple-native"] }
+# Modern login-item registration (SMAppService, macOS 13+). Shows the app
+# itself in System Settings instead of the signing team name.
+smappservice-rs = "0.1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 keyring = { version = "3", features = ["windows-native"] }

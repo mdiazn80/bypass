@@ -48,6 +48,18 @@ export async function checkBiometricAvailable(): Promise<boolean> {
   return invoke("check_biometric_available");
 }
 
+export async function enableAutostart(): Promise<void> {
+  return invoke("enable_autostart");
+}
+
+export async function disableAutostart(): Promise<void> {
+  return invoke("disable_autostart");
+}
+
+export async function isAutostartEnabled(): Promise<boolean> {
+  return invoke("is_autostart_enabled");
+}
+
 // --- Shell integration ---
 
 export async function getShellStatus(): Promise<ShellStatus> {

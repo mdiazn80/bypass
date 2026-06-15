@@ -1,4 +1,5 @@
 mod agent;
+mod autostart;
 mod biometric;
 mod commands;
 mod credentials;
@@ -40,6 +41,11 @@ pub fn run() {
         })
         .setup(|app| {
             tray::create_tray(app.handle())?;
+
+            // Migrate away from the legacy LaunchAgent (shown under the signing
+            // team name) to SMAppService-based login items.
+            #[cfg(target_os = "macos")]
+            autostart::migrate_legacy_launch_agent(app.handle());
 
             // Start the shell agent if it was enabled in a previous session.
             let shell_enabled = {
@@ -106,6 +112,9 @@ pub fn run() {
             commands::read_file_text,
             commands::get_config,
             commands::update_config,
+            autostart::enable_autostart,
+            autostart::disable_autostart,
+            autostart::is_autostart_enabled,
             commands::check_biometric_available,
             commands::get_shell_status,
             commands::set_active_context,
