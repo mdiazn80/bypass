@@ -27,15 +27,14 @@ const DEFAULT_CONFIG: AppConfig = {
 
 async function setAutostartEnabled(enabled: boolean): Promise<boolean> {
   try {
-    const { enable, disable } = await import("@tauri-apps/plugin-autostart");
     if (enabled) {
-      await enable();
+      await api.enableAutostart();
     } else {
-      await disable();
+      await api.disableAutostart();
     }
-    return enabled;
-  } catch {
-    // Autostart plugin may not be available
+    return await api.isAutostartEnabled();
+  } catch (err) {
+    console.error("[autostart] failed to update launch-at-login:", err);
     return enabled;
   }
 }
@@ -51,11 +50,10 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     set({ config });
 
     try {
-      const { isEnabled } = await import("@tauri-apps/plugin-autostart");
-      const enabled = await isEnabled();
+      const enabled = await api.isAutostartEnabled();
       set({ autostart: enabled });
     } catch {
-      // Autostart plugin may not be available
+      // Autostart status may be unavailable (e.g. unsigned dev build)
     }
 
     await get().loadShellStatus();
