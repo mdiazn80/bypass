@@ -139,7 +139,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload darwin-aarch64 updater fragment
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: updater-darwin-aarch64
           path: updater-darwin-aarch64.json
@@ -156,7 +156,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Download darwin-aarch64 updater fragment
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: updater-darwin-aarch64
           path: darwin-aarch64/
