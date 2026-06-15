@@ -57,18 +57,21 @@ pub fn run() {
                 }
             }
 
-            let window = app.get_webview_window("main").unwrap();
+            let window = app.get_webview_window("main")
+                .ok_or("main window not found")?;
 
-            // Start minimized: hide window and dock icon, only show in menu bar
+            // The window starts hidden (visible: false in tauri.conf.json).
+            // Show it now unless the user wants to start minimized to tray.
             let should_start_minimized = {
                 let state = app.state::<AppState>();
                 let config = state.config.lock().unwrap();
                 config.start_minimized
             };
             if should_start_minimized {
-                window.hide().ok();
                 #[cfg(target_os = "macos")]
                 let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            } else {
+                window.show().ok();
             }
 
             // Hide window on close if minimize_to_tray is enabled

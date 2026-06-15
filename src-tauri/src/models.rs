@@ -10,9 +10,15 @@ pub struct Context {
     pub updated_at: String,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
+    #[serde(default)]
     pub start_minimized: bool,
     /// Whether the local shell agent (socket listener) should run.
     #[serde(default)]
