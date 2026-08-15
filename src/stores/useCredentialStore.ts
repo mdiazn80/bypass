@@ -4,8 +4,13 @@ import * as api from "../services/tauri";
 
 export interface VarRow {
   key: string;
-  /** Decrypted value. Loaded eagerly when a context is selected. */
+  /**
+   * Decrypted value as stored, `{$VAR}` references included. This is what the
+   * editor shows and saves. Loaded eagerly when a context is selected.
+   */
   value: string;
+  /** Set when a reference is missing, cyclic or too deep. */
+  issue: string | null;
 }
 
 interface CredentialStore {
@@ -17,11 +22,13 @@ interface CredentialStore {
 
   load: () => Promise<void>;
   selectContext: (name: string | null) => Promise<void>;
+  refreshVars: () => Promise<void>;
   createContext: (name: string, description: string) => Promise<void>;
   updateContext: (name: string, description: string) => Promise<void>;
   renameContext: (oldName: string, newName: string) => Promise<void>;
   deleteContext: (name: string) => Promise<void>;
   setVar: (key: string, value: string) => Promise<void>;
+  setVars: (entries: { key: string; value: string }[]) => Promise<void>;
   deleteVar: (key: string) => Promise<void>;
   clearError: () => void;
 }
@@ -46,18 +53,24 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
   selectContext: async (name: string | null) => {
     set({ selectedName: name, vars: [] });
     if (!name) return;
+    await get().refreshVars();
+  },
+
+  /**
+   * Reloads every variable of the selected context, templates and resolved
+   * values together. Called after any write because a single edit can change
+   * the resolved value of every variable that references it.
+   */
+  refreshVars: async () => {
+    const name = get().selectedName;
+    if (!name) return;
     try {
-      const keys = await api.listCredentialVars(name);
-      const vars = await Promise.all(
-        keys.map(async (key) => ({
-          key,
-          value: await api.getCredentialVar(name, key),
-        }))
-      );
+      const rows = await api.resolveCredentialVars(name);
       // Ignore the result if the user switched contexts while loading.
-      if (get().selectedName === name) {
-        set({ vars });
-      }
+      if (get().selectedName !== name) return;
+      set({
+        vars: rows.map((r) => ({ key: r.key, value: r.raw, issue: r.issue })),
+      });
     } catch (err) {
       set({ error: String(err) });
     }
@@ -111,17 +124,22 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
   },
 
   setVar: async (key: string, value: string) => {
+    await get().setVars([{ key, value }]);
+  },
+
+  /**
+   * Writes several variables and refreshes once. The writes are sequential
+   * because each one is a read-modify-write of the whole encrypted store, so
+   * issuing them concurrently would lose entries.
+   */
+  setVars: async (entries: { key: string; value: string }[]) => {
     const { selectedName } = get();
     if (!selectedName) return;
     try {
-      await api.setCredentialVar(selectedName, key, value);
-      set((s) => {
-        const exists = s.vars.some((v) => v.key === key);
-        const vars = exists
-          ? s.vars.map((v) => (v.key === key ? { key, value } : v))
-          : [...s.vars, { key, value }].sort((a, b) => a.key.localeCompare(b.key));
-        return { vars };
-      });
+      for (const { key, value } of entries) {
+        await api.setCredentialVar(selectedName, key, value);
+      }
+      await get().refreshVars();
     } catch (err) {
       set({ error: String(err) });
     }
@@ -132,7 +150,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
     if (!selectedName) return;
     try {
       await api.deleteCredentialVar(selectedName, key);
-      set((s) => ({ vars: s.vars.filter((v) => v.key !== key) }));
+      await get().refreshVars();
     } catch (err) {
       set({ error: String(err) });
     }

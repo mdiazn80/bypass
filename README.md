@@ -7,7 +7,7 @@ Bypass lets you create, organize and toggle groups of hosts entries (called **Co
 ## Features
 
 - **Contexts** &mdash; Group related hosts entries and toggle them on/off with a single click.
-- **Credential contexts** &mdash; Manage sensitive environment variables (API keys, tokens, connection strings) in an encrypted vault (OS keychain master key + ChaCha20-Poly1305 on-disk store).
+- **Credential contexts** &mdash; Manage sensitive environment variables (API keys, tokens, connection strings) in an encrypted vault (OS keychain master key + ChaCha20-Poly1305 on-disk store). Values can reference each other with `{$VAR}`.
 - **Syntax highlighting** &mdash; IPs, hostnames and comments are color-coded in the editor.
 - **System Hosts view** &mdash; Read-only preview of the current `/etc/hosts` file, auto-refreshed when contexts change.
 - **Import / Export** &mdash; Share contexts as JSON files using native OS file dialogs.
@@ -106,6 +106,7 @@ bypass/
 │   │   └── secrets/            # Encrypted credential vault
 │   │       ├── backend.rs      # SecretBackend trait + HybridBackend
 │   │       ├── crypto.rs       # ChaCha20-Poly1305 seal/open
+│   │       ├── interpolate.rs  # `{$VAR}` references between variables
 │   │       ├── keystore.rs     # OS keychain master key + env fallback
 │   │       └── vault.rs        # High-level API
 │   └── tauri.conf.json         # Tauri configuration
@@ -157,6 +158,22 @@ Bypass can manage groups of sensitive environment variables (a *credential conte
 - Secret values are never written to disk in plaintext, and the master key never appears in the file.
 
 In the GUI, open the **Credentials** tab to create contexts and add/edit/delete variables (values are masked by default with a reveal toggle). You can initialize a context by dragging a `.env`-style file onto the drop zone; keys without a value are imported empty so you can fill them in manually.
+
+### Referencing other variables
+
+A value can reuse another variable of the **same** context with `{$VAR}`:
+
+| Variable | Stored value | Exported value |
+|----------|--------------|----------------|
+| `APP_PATH` | `/opt/app` | `/opt/app` |
+| `APP_PATH_CONFIG` | `{$APP_PATH}/config` | `/opt/app/config` |
+| `APP_LOGS` | `{$APP_PATH_CONFIG}/logs` | `/opt/app/config/logs` |
+
+- References are resolved **when the value is handed to your shell**, not when it is saved. The vault keeps the template, so editing `APP_PATH` updates every variable derived from it on the next prompt.
+- References may chain to any depth and are order-independent.
+- Only the two-character sequence `{$` starts a reference. A bare `$` is always literal, so secrets containing dollar signs (bcrypt hashes, passwords) need no escaping. Write `\{$` for a literal `{$`.
+- References to shell variables are **not** supported: `$HOME` and `${HOME}` are exported verbatim.
+- A reference that is undefined, cyclic (`A → B → A`) or too deeply nested is exported verbatim and flagged in the editor, under the variable it affects.
 
 ### Security notes
 

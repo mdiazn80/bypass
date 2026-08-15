@@ -1,4 +1,4 @@
-use crate::secrets::{BypassError, CredentialContext, Vault};
+use crate::secrets::{BypassError, CredentialContext, ResolvedVar, Vault};
 use tauri::State;
 
 use crate::agent;
@@ -102,6 +102,17 @@ pub fn get_credential_var(
     key: String,
 ) -> Result<String, String> {
     with_vault(&state, |v| v.get_var(&context, &key))
+}
+
+/// Returns every variable of a context with its `{$VAR}` references resolved,
+/// plus a description of any reference that could not be resolved. This is what
+/// the editor previews; the stored templates still come from `get_credential_var`.
+#[tauri::command]
+pub fn resolve_credential_vars(
+    state: State<AppState>,
+    context: String,
+) -> Result<Vec<ResolvedVar>, String> {
+    with_vault(&state, |v| v.resolved_vars(&context))
 }
 
 /// Creates or updates a variable in a context.

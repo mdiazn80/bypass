@@ -1,6 +1,8 @@
 use super::backend::{HybridBackend, SecretBackend};
 use super::error::BypassError;
+use super::interpolate::{resolve_all, ResolvedVar};
 use super::model::CredentialContext;
+use std::collections::BTreeMap;
 
 /// High-level entry point used by the GUI.
 ///
@@ -56,6 +58,17 @@ impl Vault {
         self.backend.get(context, key)
     }
 
+    /// Every variable of a context, exactly as stored (no interpolation).
+    pub fn all_vars(&self, context: &str) -> Result<BTreeMap<String, String>, BypassError> {
+        self.backend.all_vars(context)
+    }
+
+    /// Every variable of a context with its `{$VAR}` references resolved against
+    /// the other variables of that same context.
+    pub fn resolved_vars(&self, context: &str) -> Result<Vec<ResolvedVar>, BypassError> {
+        Ok(resolve_all(&self.all_vars(context)?))
+    }
+
     pub fn set_var(&self, context: &str, key: &str, value: &str) -> Result<(), BypassError> {
         self.backend.set(context, key, value)
     }
@@ -89,6 +102,44 @@ mod tests {
 
         assert_eq!(v.get_var("dev", "TOKEN").unwrap(), "abc");
         assert_eq!(v.list_keys("dev").unwrap(), vec!["TOKEN"]);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn resolved_vars_expands_references_but_get_var_stays_raw() {
+        let dir = std::env::temp_dir().join(format!("bypass_vault_ref_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        let v = vault(&dir);
+        v.create_context("dev", "Development").unwrap();
+        v.set_var("dev", "APP_PATH", "/opt/app").unwrap();
+        v.set_var("dev", "APP_PATH_CONFIG", "{$APP_PATH}/config")
+            .unwrap();
+
+        // The editor must keep seeing the template it can edit.
+        assert_eq!(
+            v.get_var("dev", "APP_PATH_CONFIG").unwrap(),
+            "{$APP_PATH}/config"
+        );
+
+        let resolved = v.resolved_vars("dev").unwrap();
+        let cfg = resolved
+            .iter()
+            .find(|r| r.key == "APP_PATH_CONFIG")
+            .unwrap();
+        assert_eq!(cfg.value, "/opt/app/config");
+        assert!(cfg.issue.is_none());
+
+        // Changing the referenced variable updates the dependant one.
+        v.set_var("dev", "APP_PATH", "/srv/app").unwrap();
+        let resolved = v.resolved_vars("dev").unwrap();
+        let cfg = resolved
+            .iter()
+            .find(|r| r.key == "APP_PATH_CONFIG")
+            .unwrap();
+        assert_eq!(cfg.value, "/srv/app/config");
+
         fs::remove_dir_all(&dir).ok();
     }
 }
