@@ -40,7 +40,7 @@ function parseEnv(text: string): { key: string; value: string }[] {
 }
 
 export default function CredentialEditor() {
-  const { contexts, selectedName, vars, updateContext, renameContext, setVar, deleteVar } =
+  const { contexts, selectedName, vars, updateContext, renameContext, setVar, setVars, deleteVar } =
     useCredentialStore();
 
   const selected = contexts.find((c) => c.name === selectedName);
@@ -67,11 +67,9 @@ export default function CredentialEditor() {
 
   const handleImportEnv = useCallback(
     (content: string) => {
-      for (const { key, value } of parseEnv(content)) {
-        void setVar(key, value);
-      }
+      void setVars(parseEnv(content));
     },
-    [setVar]
+    [setVars]
   );
 
   if (!selectedName || !selected) {
@@ -168,40 +166,52 @@ export default function CredentialEditor() {
           A <code>.bypass-context</code> file in a project directory overrides the global active context for the CLI.
         </p>
 
+        <p className="cred-hint">
+          Use <code>{"{$VAR}"}</code> to reuse another variable of this context &mdash; for
+          example <code>{"{$APP_PATH}/config"}</code>. References resolve when the value reaches
+          your shell, so editing the source updates everything derived from it.
+        </p>
+
         <div className="cred-vars">
           {vars.map((v) => {
             const draft = drafts[v.key] ?? v.value;
             const dirty = draft !== v.value;
+            // Reported against the saved template, so it is hidden while the row
+            // is dirty rather than shown next to an edited value.
+            const issue = dirty ? null : v.issue;
             return (
-              <div className="cred-var-row" key={v.key}>
-                <span className="cred-var-key">{v.key}</span>
-                <input
-                  className="cred-var-value-input"
-                  value={draft}
-                  spellCheck={false}
-                  autoComplete="off"
-                  onChange={(e) =>
-                    setDrafts((d) => ({ ...d, [v.key]: e.target.value }))
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && dirty) handleSaveVar(v.key);
-                  }}
-                />
-                <button
-                  className="cred-var-btn save"
-                  title="Save new value"
-                  disabled={!dirty}
-                  onClick={() => handleSaveVar(v.key)}
-                >
-                  save
-                </button>
-                <button
-                  className="cred-var-btn danger"
-                  title="Delete variable"
-                  onClick={() => deleteVar(v.key)}
-                >
-                  ×
-                </button>
+              <div className="cred-var-item" key={v.key}>
+                <div className="cred-var-row">
+                  <span className="cred-var-key">{v.key}</span>
+                  <input
+                    className="cred-var-value-input"
+                    value={draft}
+                    spellCheck={false}
+                    autoComplete="off"
+                    onChange={(e) =>
+                      setDrafts((d) => ({ ...d, [v.key]: e.target.value }))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && dirty) handleSaveVar(v.key);
+                    }}
+                  />
+                  <button
+                    className="cred-var-btn save"
+                    title="Save new value"
+                    disabled={!dirty}
+                    onClick={() => handleSaveVar(v.key)}
+                  >
+                    save
+                  </button>
+                  <button
+                    className="cred-var-btn danger"
+                    title="Delete variable"
+                    onClick={() => deleteVar(v.key)}
+                  >
+                    ×
+                  </button>
+                </div>
+                {issue && <div className="cred-var-issue">{issue}</div>}
               </div>
             );
           })}

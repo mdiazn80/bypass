@@ -165,21 +165,22 @@ fn build_response(request: &str, app: &AppHandle) -> String {
     out
 }
 
-/// Decrypts every variable of `ctx`. Mirrors the lazy-vault pattern in
+/// Decrypts every variable of `ctx` and resolves `{$VAR}` references between
+/// them, so shells receive final values. Mirrors the lazy-vault pattern in
 /// `credentials.rs`. The lock is released when this returns, before any socket I/O.
+///
+/// Resolution happens here rather than at write time: the vault keeps the
+/// template, so editing a referenced variable updates its dependants on the next
+/// prompt. References that cannot be resolved are exported verbatim; the GUI is
+/// where the user is told about them.
 fn vars_for_context(state: &State<AppState>, ctx: &str) -> Result<Vec<(String, String)>, String> {
     let mut guard = state.vault.lock().map_err(|e| e.to_string())?;
     if guard.is_none() {
         *guard = Some(Vault::new().map_err(|e| e.to_string())?);
     }
     let vault = guard.as_ref().expect("vault initialized above");
-    let keys = vault.list_keys(ctx).map_err(|e| e.to_string())?;
-    let mut out = Vec::with_capacity(keys.len());
-    for k in keys {
-        let v = vault.get_var(ctx, &k).map_err(|e| e.to_string())?;
-        out.push((k, v));
-    }
-    Ok(out)
+    let resolved = vault.resolved_vars(ctx).map_err(|e| e.to_string())?;
+    Ok(resolved.into_iter().map(|r| (r.key, r.value)).collect())
 }
 
 // --- Socket addressing. Must match `crates/bypass-shell/src/socket.rs`. ------

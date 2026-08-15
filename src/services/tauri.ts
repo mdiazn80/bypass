@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppConfig, Context, CredentialContext, ShellStatus } from "../types";
+import type {
+  AppConfig,
+  Context,
+  CredentialContext,
+  ResolvedVar,
+  ShellStatus,
+} from "../types";
 
 export async function listContexts(): Promise<Context[]> {
   return invoke("list_contexts");
@@ -122,6 +128,17 @@ export async function getCredentialVar(
   key: string
 ): Promise<string> {
   return invoke("get_credential_var", { context, key });
+}
+
+/**
+ * Every variable of a context, template and resolved value together, in a
+ * single call. Prefer this over `listCredentialVars` + `getCredentialVar`: it
+ * decrypts the store once and both forms come from the same snapshot.
+ */
+export async function resolveCredentialVars(
+  context: string
+): Promise<ResolvedVar[]> {
+  return invoke("resolve_credential_vars", { context });
 }
 
 export async function setCredentialVar(

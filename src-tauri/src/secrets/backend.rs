@@ -157,6 +157,17 @@ impl HybridBackend {
         self.store(&data)
     }
 
+    /// Returns every variable of a context in a single decryption pass, unlike
+    /// repeated [`SecretBackend::get`] calls which reload the store each time.
+    pub fn all_vars(&self, context: &str) -> Result<BTreeMap<String, String>, BypassError> {
+        let data = self.load()?;
+        let entry = data
+            .contexts
+            .get(context)
+            .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
+        Ok(entry.vars.clone())
+    }
+
     /// Returns public metadata for every context, sorted by name.
     pub fn context_meta(&self) -> Result<Vec<CredentialContext>, BypassError> {
         let data = self.load()?;

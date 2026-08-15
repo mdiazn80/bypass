@@ -8,10 +8,12 @@
 mod backend;
 mod crypto;
 mod error;
+mod interpolate;
 mod keystore;
 mod model;
 mod vault;
 
 pub use error::BypassError;
+pub use interpolate::ResolvedVar;
 pub use model::CredentialContext;
 pub use vault::Vault;

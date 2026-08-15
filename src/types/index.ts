@@ -30,3 +30,14 @@ export interface CredentialContext {
   created_at: string;
   updated_at: string;
 }
+
+/** A credential variable with its `{$VAR}` references resolved. */
+export interface ResolvedVar {
+  key: string;
+  /** The template as stored — what the editor shows and saves. */
+  raw: string;
+  /** The value after interpolation, which is what shells receive. */
+  value: string;
+  /** Set when a reference is missing, cyclic or too deep. */
+  issue: string | null;
+}

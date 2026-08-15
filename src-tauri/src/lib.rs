@@ -128,6 +128,7 @@ pub fn run() {
             credentials::delete_credential_context,
             credentials::list_credential_vars,
             credentials::get_credential_var,
+            credentials::resolve_credential_vars,
             credentials::set_credential_var,
             credentials::delete_credential_var,
         ])
