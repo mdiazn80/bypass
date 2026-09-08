@@ -1,7 +1,7 @@
 import logo from "../assets/logo.png";
 import "./TopBar.css";
 
-export type View = "contexts" | "credentials" | "settings";
+export type View = "home" | "contexts" | "credentials" | "settings";
 
 interface TopBarProps {
   view: View;
@@ -17,6 +17,12 @@ export default function TopBar({ view, onViewChange, onAbout }: TopBarProps) {
         Bypass
       </div>
       <nav className="topbar-nav">
+        <button
+          className={view === "home" ? "active" : ""}
+          onClick={() => onViewChange("home")}
+        >
+          Home
+        </button>
         <button
           className={view === "contexts" ? "active" : ""}
           onClick={() => onViewChange("contexts")}

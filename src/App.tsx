@@ -4,6 +4,7 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import TopBar, { type View } from "./components/TopBar";
 import Sidebar from "./components/Sidebar";
+import Dashboard from "./components/Dashboard";
 import ContextEditor from "./components/ContextEditor";
 import CredentialSidebar from "./components/CredentialSidebar";
 import CredentialEditor from "./components/CredentialEditor";
@@ -17,7 +18,7 @@ import { useCredentialStore } from "./stores/useCredentialStore";
 import "./App.css";
 
 function App() {
-  const [view, setView] = useState<View>("contexts");
+  const [view, setView] = useState<View>("home");
   const [showAbout, setShowAbout] = useState(false);
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   const pendingUpdate = useRef<Update | null>(null);
@@ -113,6 +114,7 @@ function App() {
     <div className="app">
       <TopBar view={view} onViewChange={setView} onAbout={() => setShowAbout(true)} />
       <div className="app-body">
+        {view === "home" && <Dashboard />}
         {view === "contexts" && (
           <>
             <Sidebar />
