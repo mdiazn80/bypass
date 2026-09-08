@@ -41,3 +41,36 @@ export interface ResolvedVar {
   /** Set when a reference is missing, cyclic or too deep. */
   issue: string | null;
 }
+
+export interface MachineInfo {
+  hostname: string;
+  os: string;
+  kernel_version: string;
+  arch: string;
+  cpu_brand: string;
+  cpu_count: number;
+  /** Bytes. */
+  total_memory: number;
+  /** Bytes. */
+  used_memory: number;
+  /** Seconds since boot. */
+  uptime: number;
+}
+
+export interface NetworkInterface {
+  name: string;
+  ipv4: string[];
+  ipv6: string[];
+  is_loopback: boolean;
+}
+
+/** Either family is null when the network has no connectivity for it. */
+export interface PublicIps {
+  ipv4: string | null;
+  ipv6: string | null;
+}
+
+export interface SystemInfo {
+  machine: MachineInfo;
+  interfaces: NetworkInterface[];
+}

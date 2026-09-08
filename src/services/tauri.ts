@@ -3,8 +3,10 @@ import type {
   AppConfig,
   Context,
   CredentialContext,
+  PublicIps,
   ResolvedVar,
   ShellStatus,
+  SystemInfo,
 } from "../types";
 
 export async function listContexts(): Promise<Context[]> {
@@ -154,4 +156,14 @@ export async function deleteCredentialVar(
   key: string
 ): Promise<void> {
   return invoke("delete_credential_var", { context, key });
+}
+
+// --- System information ---
+
+export async function getSystemInfo(): Promise<SystemInfo> {
+  return invoke("get_system_info");
+}
+
+export async function getPublicIps(): Promise<PublicIps> {
+  return invoke("get_public_ips");
 }

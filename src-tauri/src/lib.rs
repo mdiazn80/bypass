@@ -9,6 +9,7 @@ mod secrets;
 mod shell_install;
 mod state;
 mod storage;
+mod system;
 mod tray;
 
 use state::AppState;
@@ -131,6 +132,8 @@ pub fn run() {
             credentials::resolve_credential_vars,
             credentials::set_credential_var,
             credentials::delete_credential_var,
+            system::get_system_info,
+            system::get_public_ips,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

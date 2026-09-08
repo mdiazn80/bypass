@@ -1,0 +1,237 @@
+.dashboard {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #2e2e2e;
+}
+
+.dashboard-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ddd;
+  margin: 0;
+}
+
+.dashboard-refresh {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.dashboard-refresh:hover:not(:disabled) {
+  background: #333;
+  border-color: #4a4a4a;
+  color: var(--color-accent);
+}
+
+.dashboard-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-refresh-icon {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.dashboard-refresh-icon.spinning {
+  animation: dashboard-spin 0.9s linear infinite;
+}
+
+@keyframes dashboard-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dashboard-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+/* The error banner belongs to neither column. */
+.dashboard-error {
+  grid-column: 1 / -1;
+}
+
+/* Narrow windows stack the columns instead of squeezing addresses. */
+@media (max-width: 760px) {
+  .dashboard-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-group + .dashboard-group {
+  margin-top: 24px;
+}
+
+.dashboard-group h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+}
+
+.dashboard-card {
+  background: #1c1c1c;
+  border-radius: 8px;
+  padding: 4px 16px;
+}
+
+/* Machine facts: label on the left, value right-aligned and monospaced. */
+.dashboard-info-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #262626;
+}
+
+.dashboard-info-row:last-child {
+  border-bottom: none;
+}
+
+.dashboard-info-label {
+  font-size: 13px;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.dashboard-info-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #ccc;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* Address blocks, shared by the public card and each interface card. */
+.dashboard-addresses {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #262626;
+}
+
+.dashboard-addresses:last-child {
+  border-bottom: none;
+}
+
+.dashboard-family {
+  font-size: 11px;
+  font-weight: 600;
+  color: #777;
+  letter-spacing: 0.5px;
+  width: 84px;
+  flex-shrink: 0;
+}
+
+.dashboard-address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Address, adapter name and the copy control on one line. */
+.dashboard-address-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dashboard-address {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: #ccc;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.dashboard-address-meta {
+  font-family: var(--font-sans, inherit);
+  font-size: 11px;
+  color: #666;
+}
+
+.dashboard-address.dashboard-empty {
+  color: #555;
+  font-style: normal;
+}
+
+.dashboard-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #5a5a5a;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.dashboard-copy:hover {
+  background: #2a2a2a;
+  color: var(--color-accent);
+}
+
+.dashboard-copy.copied,
+.dashboard-copy.copied:hover {
+  color: #4ade80;
+}
+
+.dashboard-placeholder {
+  font-size: 13px;
+  color: #666;
+  padding: 10px 0;
+}
+
+/* Sits under the network card, so it leads with space instead of trailing it. */
+.dashboard-note {
+  font-size: 12px;
+  color: #888;
+  padding: 8px 2px 0;
+}
+
+.dashboard-error {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 6px;
+}
