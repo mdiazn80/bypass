@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { save } from "@tauri-apps/plugin-dialog";
-import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { useContextStore, SYSTEM_HOSTS_ID } from "../stores/useContextStore";
+import MoveButtons from "./MoveButtons";
+import ConfirmModal from "./ConfirmModal";
 import "./Sidebar.css";
 
 export default function Sidebar() {
-  const { contexts, selectedId, select, create, remove, toggle } =
+  const { contexts, selectedId, togglingId, reordering, select, create, remove, toggle, move } =
     useContextStore();
+  // Toggling and reordering both rewrite the hosts file; one at a time.
+  const busy = togglingId !== null || reordering;
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState(false);
+  // Context awaiting delete confirmation.
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string; enabled: boolean } | null>(null);
 
   const handleCreate = async () => {
     const name = newName.trim();
@@ -16,21 +20,6 @@ export default function Sidebar() {
     await create(name);
     setNewName("");
     setShowInput(false);
-  };
-
-  const handleExport = async (ctx: { id: string; name: string; content: string }) => {
-    try {
-      const filePath = await save({
-        defaultPath: `${ctx.name.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`,
-        filters: [{ name: "JSON", extensions: ["json"] }],
-      });
-      if (!filePath) return;
-
-      const data = { name: ctx.name, content: ctx.content };
-      await writeTextFile(filePath, JSON.stringify(data, null, 2));
-    } catch {
-      // user cancelled
-    }
   };
 
   return (
@@ -77,41 +66,50 @@ export default function Sidebar() {
           <span className="sidebar-item-name">System Hosts</span>
         </div>
 
-        {contexts.map((ctx) => (
+        {contexts.map((ctx, i) => (
           <div
             key={ctx.id}
             className={`sidebar-item ${selectedId === ctx.id ? "selected" : ""}`}
             onClick={() => select(ctx.id)}
           >
             <span className="sidebar-item-name">{ctx.name}</span>
-            <button
-              className="sidebar-export"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleExport(ctx);
-              }}
-              title="Export context"
-            >
-              ↓
-            </button>
+            <MoveButtons
+              canUp={i > 0}
+              canDown={i < contexts.length - 1}
+              disabled={busy}
+              onMove={(delta) => move(ctx.id, delta)}
+              hint="Entries of higher contexts come first in the hosts file"
+            />
             <button
               className="sidebar-delete"
+              disabled={busy}
               onClick={(e) => {
                 e.stopPropagation();
-                remove(ctx.id);
+                setPendingDelete({ id: ctx.id, name: ctx.name, enabled: ctx.enabled });
               }}
               title="Delete context"
             >
               ×
             </button>
-            <label className="sidebar-toggle" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="checkbox"
-                checked={ctx.enabled}
-                onChange={() => toggle(ctx.id)}
+            {togglingId === ctx.id ? (
+              <span
+                className="sidebar-toggle-spinner"
+                title="Waiting for administrator authorization…"
+                aria-label="Applying"
               />
-              <span className="toggle-slider" />
-            </label>
+            ) : (
+              <label className="sidebar-toggle" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={ctx.enabled}
+                  // One hosts write at a time: a second toggle would queue up
+                  // another administrator prompt behind the first.
+                  disabled={busy}
+                  onChange={() => toggle(ctx.id)}
+                />
+                <span className="toggle-slider" />
+              </label>
+            )}
           </div>
         ))}
 
@@ -119,6 +117,27 @@ export default function Sidebar() {
           <div className="sidebar-empty">No contexts yet</div>
         )}
       </div>
+
+      {pendingDelete && (
+        <ConfirmModal
+          title="Delete context?"
+          message={
+            <>
+              <strong>{pendingDelete.name}</strong> and its hosts entries will be
+              deleted. This cannot be undone.
+              {pendingDelete.enabled && (
+                <> It is active, so its entries will also be removed from the
+                system hosts file (administrator credentials required).</>
+              )}
+            </>
+          }
+          onConfirm={() => {
+            void remove(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

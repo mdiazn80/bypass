@@ -10,10 +10,12 @@ mod crypto;
 mod error;
 mod interpolate;
 mod keystore;
+mod merge;
 mod model;
 mod vault;
 
 pub use error::BypassError;
 pub use interpolate::ResolvedVar;
+pub use merge::MergedVar;
 pub use model::CredentialContext;
 pub use vault::Vault;

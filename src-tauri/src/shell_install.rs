@@ -42,7 +42,8 @@ pub struct ShellStatus {
     pub enabled: bool,
     pub installed: bool,
     pub socket_active: bool,
-    pub active_context: Option<String>,
+    /// Highest priority first.
+    pub active_contexts: Vec<String>,
     pub detected_shell: Option<String>,
     pub rc_path: Option<String>,
 }

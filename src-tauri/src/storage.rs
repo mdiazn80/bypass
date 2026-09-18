@@ -37,12 +37,19 @@ pub fn save_contexts(contexts: &[Context]) -> Result<(), String> {
 
 pub fn load_config() -> AppConfig {
     let path = config_path();
-    if path.exists() {
+    let mut config: AppConfig = if path.exists() {
         let data = fs::read_to_string(&path).unwrap_or_default();
         serde_json::from_str(&data).unwrap_or_else(|_| AppConfig::default())
     } else {
         AppConfig::default()
+    };
+    // Configs written before several contexts could be active at once.
+    if let Some(legacy) = config.active_context.take() {
+        if config.active_contexts.is_empty() {
+            config.active_contexts.push(legacy);
+        }
     }
+    config
 }
 
 pub fn save_config(config: &AppConfig) -> Result<(), String> {

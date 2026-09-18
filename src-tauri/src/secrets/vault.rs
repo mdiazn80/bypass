@@ -1,6 +1,7 @@
 use super::backend::{HybridBackend, SecretBackend};
 use super::error::BypassError;
 use super::interpolate::{resolve_all, ResolvedVar};
+use super::merge::{merge, MergedVar};
 use super::model::CredentialContext;
 use std::collections::BTreeMap;
 
@@ -67,6 +68,21 @@ impl Vault {
     /// the other variables of that same context.
     pub fn resolved_vars(&self, context: &str) -> Result<Vec<ResolvedVar>, BypassError> {
         Ok(resolve_all(&self.all_vars(context)?))
+    }
+
+    /// The variables of several contexts layered by priority (first wins),
+    /// with `{$VAR}` references resolved against the merged set. Contexts that
+    /// no longer exist are skipped so a stale active-context name is harmless.
+    pub fn merged_vars(&self, contexts: &[String]) -> Result<Vec<MergedVar>, BypassError> {
+        let mut layers = Vec::with_capacity(contexts.len());
+        for name in contexts {
+            match self.all_vars(name) {
+                Ok(vars) => layers.push((name.clone(), vars)),
+                Err(BypassError::ContextNotFound(_)) => continue,
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(merge(&layers))
     }
 
     pub fn set_var(&self, context: &str, key: &str, value: &str) -> Result<(), BypassError> {

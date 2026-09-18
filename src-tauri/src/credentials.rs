@@ -1,4 +1,4 @@
-use crate::secrets::{BypassError, CredentialContext, ResolvedVar, Vault};
+use crate::secrets::{BypassError, CredentialContext, MergedVar, ResolvedVar, Vault};
 use tauri::State;
 
 use crate::agent;
@@ -18,10 +18,19 @@ fn with_vault<T>(
     f(vault).map_err(|e| e.to_string())
 }
 
-/// Returns metadata for all credential contexts.
+/// Returns metadata for all credential contexts in priority order (see
+/// `AppConfig::credential_order`); contexts not yet ordered come last, by name.
 #[tauri::command]
 pub fn list_credential_contexts(state: State<AppState>) -> Result<Vec<CredentialContext>, String> {
-    with_vault(&state, |v| v.list_contexts())
+    let mut contexts = with_vault(&state, |v| v.list_contexts())?;
+    if let Ok(cfg) = state.config.lock() {
+        contexts.sort_by(|a, b| {
+            cfg.credential_rank(&a.name)
+                .cmp(&cfg.credential_rank(&b.name))
+                .then_with(|| a.name.cmp(&b.name))
+        });
+    }
+    Ok(contexts)
 }
 
 /// Creates a new, empty credential context.
@@ -58,12 +67,10 @@ pub fn rename_credential_context(
     }
     let result = with_vault(&state, |v| v.rename_context(&old_name, trimmed));
     if result.is_ok() {
-        // Keep the active-context pointer in sync so it does not dangle.
+        // Keep the active/priority lists in sync so they do not dangle.
         if let Ok(mut cfg) = state.config.lock() {
-            if cfg.active_context.as_deref() == Some(old_name.as_str()) {
-                cfg.active_context = Some(trimmed.to_string());
-                let _ = crate::storage::save_config(&cfg);
-            }
+            cfg.rename_credential(&old_name, trimmed);
+            let _ = crate::storage::save_config(&cfg);
         }
         agent::bump_gen(&state);
     }
@@ -75,12 +82,10 @@ pub fn rename_credential_context(
 pub fn delete_credential_context(state: State<AppState>, name: String) -> Result<(), String> {
     let result = with_vault(&state, |v| v.delete_context(&name));
     if result.is_ok() {
-        // Clear the active-context pointer if it referenced the deleted context.
+        // Drop the context from the active/priority lists.
         if let Ok(mut cfg) = state.config.lock() {
-            if cfg.active_context.as_deref() == Some(name.as_str()) {
-                cfg.active_context = None;
-                let _ = crate::storage::save_config(&cfg);
-            }
+            cfg.forget_credential(&name);
+            let _ = crate::storage::save_config(&cfg);
         }
         agent::bump_gen(&state);
     }
@@ -113,6 +118,19 @@ pub fn resolve_credential_vars(
     context: String,
 ) -> Result<Vec<ResolvedVar>, String> {
     with_vault(&state, |v| v.resolved_vars(&context))
+}
+
+/// The variables every shell receives: all active contexts layered by
+/// priority, references resolved across them. This is the read-only summary
+/// the UI shows, and the same set `agent.rs` serves.
+#[tauri::command]
+pub fn resolve_active_credential_vars(state: State<AppState>) -> Result<Vec<MergedVar>, String> {
+    let active = state
+        .config
+        .lock()
+        .map_err(|e| e.to_string())?
+        .active_contexts_by_priority();
+    with_vault(&state, |v| v.merged_vars(&active))
 }
 
 /// Creates or updates a variable in a context.
