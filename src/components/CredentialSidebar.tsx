@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
-import { useCredentialStore } from "../stores/useCredentialStore";
+import { useCredentialStore, ACTIVE_VARS_ID } from "../stores/useCredentialStore";
+import MoveButtons from "./MoveButtons";
+import ConfirmModal from "./ConfirmModal";
 import { useConfigStore } from "../stores/useConfigStore";
 import "./Sidebar.css";
 
 export default function CredentialSidebar() {
-  const { contexts, selectedName, selectContext, createContext, deleteContext } =
-    useCredentialStore();
-  const activeContext = useConfigStore((s) => s.shellStatus?.active_context ?? null);
-  const setActiveContext = useConfigStore((s) => s.setActiveContext);
+  const {
+    contexts,
+    selectedName,
+    activeVars,
+    selectContext,
+    createContext,
+    deleteContext,
+    moveContext,
+    refreshActiveVars,
+  } = useCredentialStore();
+  const activeContexts = useConfigStore((s) => s.shellStatus?.active_contexts ?? []);
+  const setContextActive = useConfigStore((s) => s.setContextActive);
   const loadShellStatus = useConfigStore((s) => s.loadShellStatus);
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState(false);
+  // Context awaiting delete confirmation.
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadShellStatus();
@@ -24,16 +36,18 @@ export default function CredentialSidebar() {
     setShowInput(false);
   };
 
-  // Only one context can be active. Toggling the active one off clears it.
-  const handleToggleActive = (name: string) => {
-    setActiveContext(activeContext === name ? null : name);
+  const isActive = (name: string) => activeContexts.includes(name);
+
+  // Several contexts can be active at once; the merged view must follow.
+  const handleToggleActive = async (name: string) => {
+    await setContextActive(name, !isActive(name));
+    await refreshActiveVars();
   };
 
   const handleDelete = async (name: string) => {
-    if (activeContext === name) {
-      await setActiveContext(null);
-    }
+    // The backend drops the context from the active list; refresh our copy.
     await deleteContext(name);
+    await loadShellStatus();
   };
 
   return (
@@ -75,23 +89,41 @@ export default function CredentialSidebar() {
       )}
 
       <div className="sidebar-list">
-        {contexts.map((ctx) => (
+        <div
+          className={`sidebar-item sidebar-item-system ${selectedName === ACTIVE_VARS_ID ? "selected" : ""}`}
+          onClick={() => selectContext(ACTIVE_VARS_ID)}
+          title="Every variable your shells receive, merged from the active contexts"
+        >
+          <span className="sidebar-item-icon">⌘</span>
+          <span className="sidebar-item-name">Active Variables</span>
+          {activeVars.length > 0 && (
+            <span className="sidebar-item-count">{activeVars.length}</span>
+          )}
+        </div>
+
+        {contexts.map((ctx, i) => (
           <div
             key={ctx.name}
             className={`sidebar-item ${selectedName === ctx.name ? "selected" : ""}`}
             onClick={() => selectContext(ctx.name)}
           >
             <span className="sidebar-item-name">{ctx.name}</span>
-            {activeContext === ctx.name && (
+            {isActive(ctx.name) && (
               <span className="sidebar-item-badge" title="Active in shells">
                 active
               </span>
             )}
+            <MoveButtons
+              canUp={i > 0}
+              canDown={i < contexts.length - 1}
+              onMove={(delta) => moveContext(ctx.name, delta)}
+              hint="Higher contexts win when two define the same variable"
+            />
             <button
               className="sidebar-delete"
               onClick={(e) => {
                 e.stopPropagation();
-                handleDelete(ctx.name);
+                setPendingDelete(ctx.name);
               }}
               title="Delete context"
             >
@@ -101,14 +133,14 @@ export default function CredentialSidebar() {
               className="sidebar-toggle"
               onClick={(e) => e.stopPropagation()}
               title={
-                activeContext === ctx.name
-                  ? "Active context — variables served to your shells"
+                isActive(ctx.name)
+                  ? "Active — its variables are served to your shells"
                   : "Activate this context for your shells"
               }
             >
               <input
                 type="checkbox"
-                checked={activeContext === ctx.name}
+                checked={isActive(ctx.name)}
                 onChange={() => handleToggleActive(ctx.name)}
               />
               <span className="toggle-slider" />
@@ -120,6 +152,26 @@ export default function CredentialSidebar() {
           <div className="sidebar-empty">No credential contexts yet</div>
         )}
       </div>
+
+      {pendingDelete && (
+        <ConfirmModal
+          title="Delete credential context?"
+          message={
+            <>
+              <strong>{pendingDelete}</strong> and all of its variables will be
+              permanently deleted from the vault. This cannot be undone.
+              {isActive(pendingDelete) && (
+                <> It is active, so your shells will stop receiving its variables.</>
+              )}
+            </>
+          }
+          onConfirm={() => {
+            void handleDelete(pendingDelete);
+            setPendingDelete(null);
+          }}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
     </div>
   );
 }

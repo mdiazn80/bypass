@@ -14,7 +14,8 @@ interface ConfigStore {
   setShellAgentEnabled: (enabled: boolean) => Promise<void>;
   installShell: () => Promise<void>;
   uninstallShell: () => Promise<void>;
-  setActiveContext: (name: string | null) => Promise<void>;
+  setContextActive: (name: string, active: boolean) => Promise<void>;
+  reorderCredentialContexts: (names: string[]) => Promise<void>;
 }
 
 const DEFAULT_CONFIG: AppConfig = {
@@ -22,7 +23,8 @@ const DEFAULT_CONFIG: AppConfig = {
   start_minimized: false,
   shell_integration_enabled: false,
   shell_integration_installed: false,
-  active_context: null,
+  active_contexts: [],
+  credential_order: [],
 };
 
 async function setAutostartEnabled(enabled: boolean): Promise<boolean> {
@@ -116,8 +118,21 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     }
   },
 
-  setActiveContext: async (name: string | null) => {
-    const shellStatus = await api.setActiveContext(name);
-    set({ shellStatus });
+  setContextActive: async (name: string, active: boolean) => {
+    try {
+      const shellStatus = await api.setContextActive(name, active);
+      set({ shellStatus, shellError: null });
+    } catch (err) {
+      set({ shellError: String(err) });
+    }
+  },
+
+  reorderCredentialContexts: async (names: string[]) => {
+    try {
+      const shellStatus = await api.reorderCredentialContexts(names);
+      set({ shellStatus, shellError: null });
+    } catch (err) {
+      set({ shellError: String(err) });
+    }
   },
 }));

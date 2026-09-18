@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useContextStore, SYSTEM_HOSTS_ID } from "../stores/useContextStore";
 import FileDropZone from "./FileDropZone";
+import ExportButton from "./ExportButton";
+import { safeFileName } from "../utils/envFormat";
 import "./ContextEditor.css";
 
 export function highlightHosts(text: string): React.ReactNode[] {
@@ -59,8 +61,13 @@ export function highlightHosts(text: string): React.ReactNode[] {
 }
 
 export default function ContextEditor() {
-  const { contexts, selectedId, update, systemHosts } = useContextStore();
+  const { contexts, selectedId, update, systemHosts, togglingId } = useContextStore();
   const selected = contexts.find((c) => c.id === selectedId);
+  const toggling = togglingId !== null && togglingId === selectedId;
+  // Every edit to an active context rewrites the system hosts file, which
+  // prompts for administrator credentials, so editing is only allowed while
+  // the context is inactive and no toggle is in flight.
+  const locked = Boolean(selected?.enabled) || toggling;
   const [content, setContent] = useState("");
   const [name, setName] = useState("");
   const [editingName, setEditingName] = useState(false);
@@ -81,6 +88,15 @@ export default function ContextEditor() {
       }
     };
   }, [selectedId]);
+
+  // Drop any pending autosave the moment the context locks, otherwise a keystroke
+  // typed just before activating would fire a second hosts write.
+  useEffect(() => {
+    if (locked && saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+  }, [locked]);
 
   const syncScroll = useCallback(() => {
     if (textareaRef.current && highlightRef.current) {
@@ -104,7 +120,16 @@ export default function ContextEditor() {
       <div className="editor">
         <div className="editor-header">
           <h2 className="editor-name">System Hosts</h2>
-          <span className="editor-status">Read-only</span>
+          <div className="editor-header-actions">
+            <ExportButton
+              defaultName="hosts"
+              filterName="Hosts file"
+              extensions={["hosts", "txt"]}
+              getContent={() => systemHosts}
+              title="Save a copy of the system hosts file"
+            />
+            <span className="editor-status">Read-only</span>
+          </div>
         </div>
         <pre className="editor-readonly">{highlightHosts(systemHosts)}</pre>
       </div>
@@ -120,6 +145,7 @@ export default function ContextEditor() {
   }
 
   const handleContentChange = (value: string) => {
+    if (locked) return;
     setContent(value);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
@@ -130,7 +156,7 @@ export default function ContextEditor() {
   const handleNameConfirm = () => {
     setEditingName(false);
     const trimmed = name.trim();
-    if (trimmed && trimmed !== selected.name) {
+    if (!locked && trimmed && trimmed !== selected.name) {
       update(selected.id, trimmed);
     }
   };
@@ -172,21 +198,47 @@ export default function ContextEditor() {
         ) : (
           <div className="editor-name-row">
             <h2 className="editor-name">{selected.name}</h2>
+            {!locked && (
             <button className="editor-rename-btn" onClick={() => setEditingName(true)} title="Rename">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
+            )}
           </div>
         )}
         {!editingName && (
-          <span className={`editor-status ${selected.enabled ? "enabled" : ""}`}>
-            {selected.enabled ? "Active" : "Inactive"}
-          </span>
+          <div className="editor-header-actions">
+            <ExportButton
+              defaultName={`${safeFileName(selected.name)}.hosts`}
+              filterName="Hosts file"
+              extensions={["hosts", "txt"]}
+              getContent={() => (content.endsWith("\n") ? content : content + "\n")}
+              title="Export these entries as a hosts file"
+            />
+            <span className={`editor-status ${selected.enabled ? "enabled" : ""}`}>
+              {toggling && <span className="editor-status-spinner" aria-hidden="true" />}
+              {toggling
+                ? selected.enabled ? "Deactivating…" : "Activating…"
+                : selected.enabled ? "Active" : "Inactive"}
+            </span>
+          </div>
         )}
       </div>
-      {!content && !manualMode ? (
+      {toggling && (
+        <div className="editor-locked-banner">
+          Waiting for administrator authorization to update the system hosts file…
+        </div>
+      )}
+      {!toggling && selected.enabled && (
+        <div className="editor-locked-banner">
+          This context is active and read-only. Deactivate it to edit &mdash; each
+          change to an active context rewrites the system hosts file and asks for
+          administrator credentials.
+        </div>
+      )}
+      {!content && !manualMode && !locked ? (
         <div className="editor-dropzone-wrap">
           <FileDropZone
             title="Drag & drop a hosts file"
@@ -198,7 +250,7 @@ export default function ContextEditor() {
           </button>
         </div>
       ) : (
-      <div className="editor-code-wrap">
+      <div className={`editor-code-wrap ${locked ? "locked" : ""}`}>
         <pre ref={highlightRef} className="editor-highlight" aria-hidden="true">
           {content
             ? highlightHosts(displayContent)
@@ -211,8 +263,9 @@ export default function ContextEditor() {
           value={content}
           onChange={(e) => handleContentChange(e.target.value)}
           onScroll={syncScroll}
+          readOnly={locked}
           onKeyDown={(e) => {
-            if (e.key === "Tab") {
+            if (e.key === "Tab" && !locked) {
               e.preventDefault();
               const ta = textareaRef.current;
               if (!ta) return;

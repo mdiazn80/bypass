@@ -3,6 +3,7 @@ import type {
   AppConfig,
   Context,
   CredentialContext,
+  MergedVar,
   PublicIps,
   ResolvedVar,
   ShellStatus,
@@ -31,6 +32,11 @@ export async function deleteContext(id: string): Promise<void> {
 
 export async function toggleContext(id: string): Promise<Context> {
   return invoke("toggle_context", { id });
+}
+
+/** `ids` in their new order; the managed hosts block follows it. */
+export async function reorderContexts(ids: string[]): Promise<Context[]> {
+  return invoke("reorder_contexts", { ids });
 }
 
 export async function getSystemHosts(): Promise<string> {
@@ -74,8 +80,13 @@ export async function getShellStatus(): Promise<ShellStatus> {
   return invoke("get_shell_status");
 }
 
-export async function setActiveContext(name: string | null): Promise<ShellStatus> {
-  return invoke("set_active_context", { name });
+export async function setContextActive(name: string, active: boolean): Promise<ShellStatus> {
+  return invoke("set_context_active", { name, active });
+}
+
+/** `names` in priority order, first wins on duplicate keys. */
+export async function reorderCredentialContexts(names: string[]): Promise<ShellStatus> {
+  return invoke("reorder_credential_contexts", { names });
 }
 
 export async function setShellAgentEnabled(enabled: boolean): Promise<ShellStatus> {
@@ -141,6 +152,11 @@ export async function resolveCredentialVars(
   context: string
 ): Promise<ResolvedVar[]> {
   return invoke("resolve_credential_vars", { context });
+}
+
+/** The merged variables of every active context, as shells receive them. */
+export async function resolveActiveCredentialVars(): Promise<MergedVar[]> {
+  return invoke("resolve_active_credential_vars");
 }
 
 export async function setCredentialVar(

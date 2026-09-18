@@ -1,6 +1,12 @@
 import { create } from "zustand";
-import type { CredentialContext } from "../types";
+import type { CredentialContext, MergedVar } from "../types";
 import * as api from "../services/tauri";
+
+/**
+ * Pseudo-context selected to show the merged variables of every active
+ * context, the credential counterpart of the read-only System Hosts view.
+ */
+export const ACTIVE_VARS_ID = "__active_vars__";
 
 export interface VarRow {
   key: string;
@@ -17,12 +23,17 @@ interface CredentialStore {
   contexts: CredentialContext[];
   selectedName: string | null;
   vars: VarRow[];
+  /** Merged variables of the active contexts, shown by the summary view. */
+  activeVars: MergedVar[];
   loading: boolean;
   error: string | null;
 
   load: () => Promise<void>;
   selectContext: (name: string | null) => Promise<void>;
   refreshVars: () => Promise<void>;
+  refreshActiveVars: () => Promise<void>;
+  /** Moves the context one position up (`-1`, higher priority) or down (`+1`). */
+  moveContext: (name: string, delta: -1 | 1) => Promise<void>;
   createContext: (name: string, description: string) => Promise<void>;
   updateContext: (name: string, description: string) => Promise<void>;
   renameContext: (oldName: string, newName: string) => Promise<void>;
@@ -35,8 +46,9 @@ interface CredentialStore {
 
 export const useCredentialStore = create<CredentialStore>((set, get) => ({
   contexts: [],
-  selectedName: null,
+  selectedName: ACTIVE_VARS_ID,
   vars: [],
+  activeVars: [],
   loading: false,
   error: null,
 
@@ -45,6 +57,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
     try {
       const contexts = await api.listCredentialContexts();
       set({ contexts, loading: false });
+      await get().refreshActiveVars();
     } catch (err) {
       set({ loading: false, error: String(err) });
     }
@@ -53,7 +66,39 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
   selectContext: async (name: string | null) => {
     set({ selectedName: name, vars: [] });
     if (!name) return;
+    if (name === ACTIVE_VARS_ID) {
+      await get().refreshActiveVars();
+      return;
+    }
     await get().refreshVars();
+  },
+
+  refreshActiveVars: async () => {
+    try {
+      const activeVars = await api.resolveActiveCredentialVars();
+      set({ activeVars });
+    } catch (err) {
+      set({ error: String(err) });
+    }
+  },
+
+  /**
+   * Swaps the context with its neighbour and persists the full order. The
+   * order is the priority between active contexts, so the merged view is
+   * refreshed too.
+   */
+  moveContext: async (name: string, delta: -1 | 1) => {
+    const names = get().contexts.map((c) => c.name);
+    const from = names.indexOf(name);
+    const to = from + delta;
+    if (from === -1 || to < 0 || to >= names.length) return;
+    [names[from], names[to]] = [names[to], names[from]];
+    try {
+      await api.reorderCredentialContexts(names);
+      await get().load();
+    } catch (err) {
+      set({ error: String(err) });
+    }
   },
 
   /**
@@ -63,7 +108,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
    */
   refreshVars: async () => {
     const name = get().selectedName;
-    if (!name) return;
+    if (!name || name === ACTIVE_VARS_ID) return;
     try {
       const rows = await api.resolveCredentialVars(name);
       // Ignore the result if the user switched contexts while loading.
@@ -116,7 +161,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
       const wasSelected = get().selectedName === name;
       await get().load();
       if (wasSelected) {
-        set({ selectedName: null, vars: [] });
+        set({ selectedName: ACTIVE_VARS_ID, vars: [] });
       }
     } catch (err) {
       set({ error: String(err) });
@@ -140,6 +185,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
         await api.setCredentialVar(selectedName, key, value);
       }
       await get().refreshVars();
+      await get().refreshActiveVars();
     } catch (err) {
       set({ error: String(err) });
     }
@@ -151,6 +197,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
     try {
       await api.deleteCredentialVar(selectedName, key);
       await get().refreshVars();
+      await get().refreshActiveVars();
     } catch (err) {
       set({ error: String(err) });
     }

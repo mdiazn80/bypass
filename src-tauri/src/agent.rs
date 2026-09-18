@@ -149,12 +149,12 @@ fn build_response(request: &str, app: &AppHandle) -> String {
     let active = state
         .config
         .lock()
-        .ok()
-        .and_then(|c| c.active_context.clone());
+        .map(|c| c.active_contexts_by_priority())
+        .unwrap_or_default();
 
     let mut out = format!("GEN {current_gen}\n");
-    if let Some(ctx) = active {
-        if let Ok(pairs) = vars_for_context(&state, &ctx) {
+    if !active.is_empty() {
+        if let Ok(pairs) = vars_for_contexts(&state, &active) {
             for (k, v) in pairs {
                 let b64 = base64::engine::general_purpose::STANDARD.encode(v.as_bytes());
                 out.push_str(&format!("VAR {k} {b64}\n"));
@@ -165,22 +165,26 @@ fn build_response(request: &str, app: &AppHandle) -> String {
     out
 }
 
-/// Decrypts every variable of `ctx` and resolves `{$VAR}` references between
-/// them, so shells receive final values. Mirrors the lazy-vault pattern in
+/// Decrypts the variables of every active context, layers them by priority
+/// (first wins) and resolves `{$VAR}` references across the merged set, so
+/// shells receive final values. Mirrors the lazy-vault pattern in
 /// `credentials.rs`. The lock is released when this returns, before any socket I/O.
 ///
 /// Resolution happens here rather than at write time: the vault keeps the
 /// template, so editing a referenced variable updates its dependants on the next
 /// prompt. References that cannot be resolved are exported verbatim; the GUI is
 /// where the user is told about them.
-fn vars_for_context(state: &State<AppState>, ctx: &str) -> Result<Vec<(String, String)>, String> {
+fn vars_for_contexts(
+    state: &State<AppState>,
+    contexts: &[String],
+) -> Result<Vec<(String, String)>, String> {
     let mut guard = state.vault.lock().map_err(|e| e.to_string())?;
     if guard.is_none() {
         *guard = Some(Vault::new().map_err(|e| e.to_string())?);
     }
     let vault = guard.as_ref().expect("vault initialized above");
-    let resolved = vault.resolved_vars(ctx).map_err(|e| e.to_string())?;
-    Ok(resolved.into_iter().map(|r| (r.key, r.value)).collect())
+    let merged = vault.merged_vars(contexts).map_err(|e| e.to_string())?;
+    Ok(merged.into_iter().map(|m| (m.key, m.value)).collect())
 }
 
 // --- Socket addressing. Must match `crates/bypass-shell/src/socket.rs`. ------

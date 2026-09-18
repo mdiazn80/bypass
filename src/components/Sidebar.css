@@ -123,7 +123,6 @@
   flex-shrink: 0;
 }
 
-.sidebar-export,
 .sidebar-delete {
   background: none;
   border: none;
@@ -136,17 +135,8 @@
   box-shadow: none;
 }
 
-.sidebar-item:hover .sidebar-export,
 .sidebar-item:hover .sidebar-delete {
   opacity: 1;
-}
-
-.sidebar-export {
-  font-size: 14px;
-}
-
-.sidebar-export:hover {
-  color: #4ade80;
 }
 
 .sidebar-delete:hover {
@@ -218,4 +208,84 @@
 .sidebar-toggle input:checked + .toggle-slider::before {
   transform: translateX(18px);
   background: #fff;
+}
+
+/* Replaces the toggle while a hosts write waits for administrator credentials. */
+.sidebar-toggle-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin: 3px 12px 3px 16px;
+  flex-shrink: 0;
+  border: 2px solid #333;
+  border-top-color: #4ade80;
+  border-radius: 50%;
+  animation: sidebar-spin 0.8s linear infinite;
+}
+
+@keyframes sidebar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sidebar-toggle input:disabled + .toggle-slider {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.sidebar-delete:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+/* Reorder chevrons: a small stacked pair, dimmed until the row is hovered. */
+.sidebar-move {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 2px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.sidebar-item:hover .sidebar-move {
+  opacity: 1;
+}
+
+.sidebar-move-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 15px;
+  background: #2a2a2a;
+  border: none;
+  border-radius: 3px;
+  color: #bbb;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: none;
+}
+
+.sidebar-move-btn:hover:not(:disabled) {
+  color: #0a0a0a;
+  background: #4ade80;
+}
+
+.sidebar-move-btn:disabled {
+  color: #444;
+  background: #1e1e1e;
+  cursor: default;
+}
+
+/* Number of merged variables, next to the Active Variables item. */
+.sidebar-item-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #666;
+  background: #242424;
+  border-radius: 8px;
+  padding: 1px 7px;
+  flex-shrink: 0;
 }

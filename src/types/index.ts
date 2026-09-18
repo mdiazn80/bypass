@@ -12,14 +12,18 @@ export interface AppConfig {
   start_minimized: boolean;
   shell_integration_enabled: boolean;
   shell_integration_installed: boolean;
-  active_context: string | null;
+  /** Credential contexts served to shells; see `credential_order` for priority. */
+  active_contexts: string[];
+  /** Display/priority order of the credential contexts, first wins. */
+  credential_order: string[];
 }
 
 export interface ShellStatus {
   enabled: boolean;
   installed: boolean;
   socket_active: boolean;
-  active_context: string | null;
+  /** Highest priority first. */
+  active_contexts: string[];
   detected_shell: string | null;
   rc_path: string | null;
 }
@@ -39,6 +43,20 @@ export interface ResolvedVar {
   /** The value after interpolation, which is what shells receive. */
   value: string;
   /** Set when a reference is missing, cyclic or too deep. */
+  issue: string | null;
+}
+
+/** A variable of the merged set every shell receives. */
+export interface MergedVar {
+  key: string;
+  /** The template as stored in `source`. */
+  raw: string;
+  /** The value after interpolation against the merged set. */
+  value: string;
+  /** Context that owns the key (highest-priority one defining it). */
+  source: string;
+  /** Lower-priority contexts that also define the key, in priority order. */
+  shadowed: string[];
   issue: string | null;
 }
 

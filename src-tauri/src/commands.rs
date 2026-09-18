@@ -72,6 +72,24 @@ pub fn update_context(
     Ok(updated)
 }
 
+/// Reorders the hosts contexts. `ids` lists every context in its new position;
+/// any context missing from it keeps its relative order after the listed ones.
+/// The managed block of the hosts file follows this order, so it is re-applied
+/// when any context is enabled.
+#[tauri::command]
+pub fn reorder_contexts(state: State<AppState>, ids: Vec<String>) -> Result<Vec<Context>, String> {
+    let mut contexts = state.contexts.lock().map_err(|e| e.to_string())?;
+    let rank = |c: &Context| ids.iter().position(|id| *id == c.id).unwrap_or(usize::MAX);
+    // Stable sort keeps unlisted contexts in their current order.
+    contexts.sort_by_key(rank);
+
+    if contexts.iter().any(|c| c.enabled) {
+        hosts::apply_to_hosts(&contexts)?;
+    }
+    storage::save_contexts(&contexts)?;
+    Ok(contexts.clone())
+}
+
 /// Deletes a context. If it was enabled, applies hosts first to remove its
 /// entries before removing the context from disk.
 #[tauri::command]
@@ -174,16 +192,16 @@ fn build_status(state: &State<AppState>) -> ShellStatus {
             (
                 c.shell_integration_enabled,
                 c.shell_integration_installed,
-                c.active_context.clone(),
+                c.active_contexts_by_priority(),
             )
         })
-        .unwrap_or((false, false, None));
+        .unwrap_or((false, false, Vec::new()));
     let socket_active = state.agent.lock().map(|a| a.is_some()).unwrap_or(false);
     ShellStatus {
         enabled,
         installed,
         socket_active,
-        active_context: active,
+        active_contexts: active,
         detected_shell: shell_install::detected_shell_label(),
         rc_path: shell_install::rc_path_string(),
     }
@@ -194,17 +212,38 @@ pub fn get_shell_status(state: State<AppState>) -> ShellStatus {
     build_status(&state)
 }
 
-/// Sets which credential context's variables are served to shells.
+/// Activates or deactivates a credential context for shells. Several contexts
+/// can be active at once; their priority follows `reorder_credential_contexts`.
 #[tauri::command]
-pub fn set_active_context(
+pub fn set_context_active(
     state: State<AppState>,
-    name: Option<String>,
+    name: String,
+    active: bool,
 ) -> Result<ShellStatus, String> {
     {
         let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
-        cfg.active_context = name;
+        cfg.active_contexts.retain(|n| *n != name);
+        if active {
+            cfg.active_contexts.push(name);
+        }
         storage::save_config(&cfg)?;
     }
+    agent::bump_gen(&state);
+    Ok(build_status(&state))
+}
+
+/// Stores the display/priority order of the credential contexts, first wins.
+#[tauri::command]
+pub fn reorder_credential_contexts(
+    state: State<AppState>,
+    names: Vec<String>,
+) -> Result<ShellStatus, String> {
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        cfg.credential_order = names;
+        storage::save_config(&cfg)?;
+    }
+    // Priority between active contexts may have changed.
     agent::bump_gen(&state);
     Ok(build_status(&state))
 }
