@@ -88,10 +88,7 @@ fn machine_info() -> MachineInfo {
 /// per adapter, keeping IPv4 and IPv6 apart. Ordering is alphabetical by name
 /// so the dashboard does not reshuffle between refreshes.
 fn interfaces() -> Vec<NetworkInterface> {
-    let addresses = match local_ip_address::list_afinet_netifas() {
-        Ok(list) => list,
-        Err(_) => Vec::new(),
-    };
+    let addresses = local_ip_address::list_afinet_netifas().unwrap_or_default();
 
     let mut grouped: BTreeMap<String, (Vec<String>, Vec<String>)> = BTreeMap::new();
     for (name, addr) in addresses {

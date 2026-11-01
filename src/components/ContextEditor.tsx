@@ -1,15 +1,27 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useContextStore, SYSTEM_HOSTS_ID } from "../stores/useContextStore";
 import FileDropZone from "./FileDropZone";
 import ExportButton from "./ExportButton";
 import { safeFileName } from "../utils/envFormat";
+import { validateHosts } from "../utils/hostsValidation";
+import type { Context } from "../types";
 import "./ContextEditor.css";
 
-export function highlightHosts(text: string): React.ReactNode[] {
+/** `issueLines` holds 0-based indexes of lines to underline as problems. */
+export function highlightHosts(text: string, issueLines?: Set<number>): React.ReactNode[] {
   return text.split("\n").map((line, i, arr) => {
     const trimmed = line.trimStart();
     const last = i === arr.length - 1;
     const nl = last ? "" : "\n";
+
+    if (issueLines?.has(i)) {
+      return (
+        <span key={i}>
+          <span className="hl-issue">{line}</span>
+          {nl}
+        </span>
+      );
+    }
 
     // Comment line
     if (trimmed.startsWith("#")) {
@@ -61,59 +73,8 @@ export function highlightHosts(text: string): React.ReactNode[] {
 }
 
 export default function ContextEditor() {
-  const { contexts, selectedId, update, systemHosts, togglingId } = useContextStore();
+  const { contexts, selectedId, systemHosts } = useContextStore();
   const selected = contexts.find((c) => c.id === selectedId);
-  const toggling = togglingId !== null && togglingId === selectedId;
-  // Every edit to an active context rewrites the system hosts file, which
-  // prompts for administrator credentials, so editing is only allowed while
-  // the context is inactive and no toggle is in flight.
-  const locked = Boolean(selected?.enabled) || toggling;
-  const [content, setContent] = useState("");
-  const [name, setName] = useState("");
-  const [editingName, setEditingName] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const highlightRef = useRef<HTMLPreElement>(null);
-
-  useEffect(() => {
-    if (selected) {
-      setContent(selected.content);
-      setName(selected.name);
-    }
-    setManualMode(false);
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current);
-      }
-    };
-  }, [selectedId]);
-
-  // Drop any pending autosave the moment the context locks, otherwise a keystroke
-  // typed just before activating would fire a second hosts write.
-  useEffect(() => {
-    if (locked && saveTimer.current) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
-  }, [locked]);
-
-  const syncScroll = useCallback(() => {
-    if (textareaRef.current && highlightRef.current) {
-      highlightRef.current.scrollTop = textareaRef.current.scrollTop;
-      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
-    }
-  }, []);
-
-  const handleImportFile = useCallback(
-    (fileContent: string) => {
-      setContent(fileContent);
-      if (selectedId && selectedId !== SYSTEM_HOSTS_ID) {
-        update(selectedId, undefined, fileContent);
-      }
-    },
-    [selectedId, update]
-  );
 
   if (selectedId === SYSTEM_HOSTS_ID) {
     return (
@@ -143,6 +104,65 @@ export default function ContextEditor() {
       </div>
     );
   }
+
+  // Keyed by id so switching contexts starts the editor from fresh state.
+  return <HostsContextEditor key={selected.id} selected={selected} />;
+}
+
+function HostsContextEditor({ selected }: { selected: Context }) {
+  const { contexts, update, togglingId } = useContextStore();
+  const toggling = togglingId === selected.id;
+  // Every edit to an active context rewrites the system hosts file, which
+  // prompts for administrator credentials, so editing is only allowed while
+  // the context is inactive and no toggle is in flight.
+  const locked = Boolean(selected?.enabled) || toggling;
+  const [content, setContent] = useState(selected.content);
+  const [name, setName] = useState(selected.name);
+  const [editingName, setEditingName] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
+
+  const issues = useMemo(() => {
+    const others = contexts.filter((c) => c.id !== selected.id);
+    const position = contexts.findIndex((c) => c.id === selected.id);
+    return validateHosts(content, others, position);
+  }, [content, contexts, selected.id]);
+  const issueLines = useMemo(() => new Set(issues.map((issue) => issue.line - 1)), [issues]);
+
+  // Switching contexts unmounts this editor; drop its pending autosave.
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+      }
+    };
+  }, []);
+
+  // Drop any pending autosave the moment the context locks, otherwise a keystroke
+  // typed just before activating would fire a second hosts write.
+  useEffect(() => {
+    if (locked && saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+  }, [locked]);
+
+  const syncScroll = useCallback(() => {
+    if (textareaRef.current && highlightRef.current) {
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop;
+      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  }, []);
+
+  const handleImportFile = useCallback(
+    (fileContent: string) => {
+      setContent(fileContent);
+      update(selected.id, undefined, fileContent);
+    },
+    [selected.id, update]
+  );
 
   const handleContentChange = (value: string) => {
     if (locked) return;
@@ -253,7 +273,7 @@ export default function ContextEditor() {
       <div className={`editor-code-wrap ${locked ? "locked" : ""}`}>
         <pre ref={highlightRef} className="editor-highlight" aria-hidden="true">
           {content
-            ? highlightHosts(displayContent)
+            ? highlightHosts(displayContent, issueLines)
             : <span className="hl-placeholder">{"# Add hosts entries, one per line\n# IPv4 example:\n# 192.168.1.1     mysite.local\n# IPv6 examples:\n# ::1             localhost\n# 2001:db8::1     myhost.local"}</span>
           }
         </pre>
@@ -282,6 +302,16 @@ export default function ContextEditor() {
           spellCheck={false}
         />
       </div>
+      )}
+      {content && issues.length > 0 && (
+        <ul className="editor-issues" aria-label="Problems in these entries">
+          {issues.map((issue, i) => (
+            <li key={i}>
+              <span className="editor-issue-line">Line {issue.line}</span>
+              {issue.message}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

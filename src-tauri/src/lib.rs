@@ -4,6 +4,7 @@ mod biometric;
 mod commands;
 mod credentials;
 mod hosts;
+mod hosts_watch;
 mod models;
 mod secrets;
 mod shell_install;
@@ -16,6 +17,7 @@ use state::AppState;
 use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_window_state::StateFlags;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,6 +30,14 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Remember size and position across launches. Visibility is left out
+        // so `start_minimized` below stays the only thing deciding whether the
+        // window is shown at startup.
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                .build(),
+        )
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
@@ -64,6 +74,8 @@ pub fn run() {
                 }
             }
 
+            hosts_watch::start(app.handle().clone());
+
             let window = app.get_webview_window("main")
                 .ok_or("main window not found")?;
 
@@ -76,7 +88,7 @@ pub fn run() {
             };
             if should_start_minimized {
                 #[cfg(target_os = "macos")]
-                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
             } else {
                 window.show().ok();
             }
@@ -111,6 +123,8 @@ pub fn run() {
             commands::toggle_context,
             commands::reorder_contexts,
             commands::get_system_hosts,
+            commands::get_hosts_sync,
+            commands::reapply_hosts,
             commands::read_file_text,
             commands::get_config,
             commands::update_config,

@@ -9,6 +9,23 @@ use crate::shell_install::{self, ShellStatus};
 use crate::state::AppState;
 use crate::storage;
 
+/// Whether the managed block in the system hosts file matches the enabled
+/// contexts. False when another program rewrote or removed it.
+#[tauri::command]
+pub fn get_hosts_sync(state: State<AppState>) -> Result<bool, String> {
+    let current = hosts::read_system_hosts()?;
+    let contexts = state.contexts.lock().map_err(|e| e.to_string())?;
+    Ok(hosts::is_in_sync(&current, &contexts))
+}
+
+/// Writes the managed block again from the enabled contexts, restoring it after
+/// another program changed the hosts file.
+#[tauri::command]
+pub fn reapply_hosts(state: State<AppState>) -> Result<(), String> {
+    let contexts = state.contexts.lock().map_err(|e| e.to_string())?;
+    hosts::apply_to_hosts(&contexts)
+}
+
 /// Returns the full list of contexts stored in memory.
 #[tauri::command]
 pub fn list_contexts(state: State<AppState>) -> Vec<Context> {
@@ -18,6 +35,7 @@ pub fn list_contexts(state: State<AppState>) -> Vec<Context> {
 /// Creates a new empty context and persists it.
 #[tauri::command]
 pub fn create_context(state: State<AppState>, name: String) -> Result<Context, String> {
+    let name = hosts::clean_context_name(&name)?;
     let now = chrono::Utc::now().to_rfc3339();
     let ctx = Context {
         id: Uuid::new_v4().to_string(),
@@ -53,7 +71,7 @@ pub fn update_context(
     let was_enabled = ctx.enabled;
 
     if let Some(n) = name {
-        ctx.name = n;
+        ctx.name = hosts::clean_context_name(&n)?;
     }
     if let Some(c) = content {
         ctx.content = c;

@@ -3,55 +3,18 @@ import { useCredentialStore, ACTIVE_VARS_ID } from "../stores/useCredentialStore
 import { useConfigStore } from "../stores/useConfigStore";
 import FileDropZone from "./FileDropZone";
 import ExportButton from "./ExportButton";
-import { safeFileName, toEnvFile } from "../utils/envFormat";
+import { parseEnv, parsePasted, safeFileName, toEnvFile } from "../utils/envFormat";
 import "./ContextEditor.css";
 import "./CredentialEditor.css";
 
-/**
- * Parses a `.env`-style file into key/value pairs. Lines without `=` yield a
- * key with an empty value so the user can fill it in manually.
- */
-function parseEnv(text: string): { key: string; value: string }[] {
-  const result: { key: string; value: string }[] = [];
-  for (const rawLine of text.split(/\r?\n/)) {
-    let line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    if (line.startsWith("export ")) line = line.slice("export ".length).trim();
-
-    const eq = line.indexOf("=");
-    let key: string;
-    let value: string;
-    if (eq === -1) {
-      key = line;
-      value = "";
-    } else {
-      key = line.slice(0, eq).trim();
-      value = line.slice(eq + 1).trim();
-    }
-    if (!key) continue;
-
-    if (
-      value.length >= 2 &&
-      ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'")))
-    ) {
-      value = value.slice(1, -1);
-    }
-    result.push({ key, value });
-  }
-  return result;
-}
-
-/**
- * Entries from pasted text. Unlike a `.env` import, at least one `KEY=value`
- * line is required so pasting unrelated text never creates junk keys.
- */
-function parsePasted(text: string): { key: string; value: string }[] {
-  if (!/^\s*(export\s+)?[^#=\s][^=]*=/m.test(text)) return [];
-  return parseEnv(text);
-}
-
 const PASTE_FEEDBACK_MS = 2000;
+
+/** Editable copy of the saved values, keyed by variable name. */
+function draftsFrom(vars: { key: string; value: string }[]): Record<string, string> {
+  const drafts: Record<string, string> = {};
+  for (const v of vars) drafts[v.key] = v.value;
+  return drafts;
+}
 
 /**
  * Read-only view of the merged variables every shell receives: all active
@@ -145,28 +108,36 @@ export default function CredentialEditor() {
     useCredentialStore();
 
   const selected = contexts.find((c) => c.name === selectedName);
-  const [description, setDescription] = useState("");
-  const [name, setName] = useState("");
+  const [description, setDescription] = useState(selected?.description ?? "");
+  const [name, setName] = useState(selected?.name ?? "");
   const [editingName, setEditingName] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   // Per-row editable drafts of the values, keyed by variable name.
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState(() => draftsFrom(vars));
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const pasteTimer = useRef<number | undefined>(undefined);
 
-  useEffect(() => {
+  // Reset the header fields when another context is selected or its saved
+  // description changes. Adjusting state during render (instead of in an
+  // effect) avoids rendering the stale values first.
+  const [syncedHeader, setSyncedHeader] = useState({
+    name: selectedName,
+    description: selected?.description,
+  });
+  if (syncedHeader.name !== selectedName || syncedHeader.description !== selected?.description) {
+    setSyncedHeader({ name: selectedName, description: selected?.description });
     setDescription(selected?.description ?? "");
     setName(selected?.name ?? "");
     setEditingName(false);
-  }, [selectedName, selected?.description]);
+  }
 
   // Reset drafts whenever the persisted values change (context switch or save).
-  useEffect(() => {
-    const next: Record<string, string> = {};
-    for (const v of vars) next[v.key] = v.value;
-    setDrafts(next);
-  }, [vars]);
+  const [syncedVars, setSyncedVars] = useState(vars);
+  if (syncedVars !== vars) {
+    setSyncedVars(vars);
+    setDrafts(draftsFrom(vars));
+  }
 
   const handleImportEnv = useCallback(
     (content: string) => {

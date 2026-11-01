@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "Bypass",
-        "width": 1000,
-        "height": 700,
+        "width": 1200,
+        "height": 760,
         "minWidth": 800,
         "minHeight": 500,
         "devtools": false,
@@ -23,7 +23,25 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'self'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      },
+      "devCsp": {
+        "default-src": "'self'",
+        "script-src": "'self' 'unsafe-inline'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self'",
+        "connect-src": "ipc: http://ipc.localhost ws://localhost:1420",
+        "object-src": "'none'"
+      }
     }
   },
   "bundle": {

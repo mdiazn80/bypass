@@ -22,7 +22,7 @@ pub fn load_or_create_master_key() -> Result<Zeroizing<[u8; KEY_LEN]>, BypassErr
         Ok(encoded) => decode_key(&encoded),
         Err(keyring::Error::NoEntry) => {
             let key = crypto::random_key();
-            let encoded = base64::engine::general_purpose::STANDARD.encode(&*key);
+            let encoded = base64::engine::general_purpose::STANDARD.encode(key.as_slice());
             entry
                 .set_password(&encoded)
                 .map_err(|e| BypassError::Keychain(e.to_string()))?;

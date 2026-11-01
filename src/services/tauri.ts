@@ -43,6 +43,16 @@ export async function getSystemHosts(): Promise<string> {
   return invoke("get_system_hosts");
 }
 
+/** False when another program rewrote or removed Bypass's block in the hosts file. */
+export async function getHostsSync(): Promise<boolean> {
+  return invoke("get_hosts_sync");
+}
+
+/** Writes the managed block again from the enabled contexts. */
+export async function reapplyHosts(): Promise<void> {
+  return invoke("reapply_hosts");
+}
+
 export async function readFileText(path: string): Promise<string> {
   return invoke("read_file_text", { path });
 }

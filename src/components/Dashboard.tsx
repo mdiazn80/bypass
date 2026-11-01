@@ -149,6 +149,17 @@ export default function Dashboard() {
     .filter((iface) => !iface.is_loopback)
     .flatMap((iface) => iface.ipv4.map((value) => ({ value, meta: iface.name })));
 
+  // Link-local addresses (fe80::/10) exist on every adapter, including the
+  // tunnel and AirDrop ones, and are only reachable on the local link, so
+  // they are left out. Global and unique-local (fd00::/8) addresses remain.
+  const localIpv6: Address[] = (info?.interfaces ?? [])
+    .filter((iface) => !iface.is_loopback)
+    .flatMap((iface) =>
+      iface.ipv6
+        .filter((value) => !/^fe[89ab]/i.test(value))
+        .map((value) => ({ value, meta: iface.name }))
+    );
+
   const publicIpv4: Address[] = publicIps?.ipv4 ? [{ value: publicIps.ipv4 }] : [];
   const publicIpv6: Address[] = publicIps?.ipv6 ? [{ value: publicIps.ipv6 }] : [];
 
@@ -208,6 +219,7 @@ export default function Dashboard() {
               <AddressRow label="IPv4 Public" addresses={publicIpv4} />
               <AddressRow label="IPv6 Public" addresses={publicIpv6} />
               <AddressRow label="IPv4 Private" addresses={privateIpv4} />
+              <AddressRow label="IPv6 Local" addresses={localIpv6} />
             </div>
             {publicError && (
               <div className="dashboard-note">Could not reach the public IP lookup service.</div>

@@ -8,7 +8,9 @@ Bypass lets you create, organize and toggle groups of hosts entries (called **Co
 
 - **Contexts** &mdash; Group related hosts entries and toggle them on/off with a single click. Reorder them to decide which entries come first in the hosts file.
 - **Credential contexts** &mdash; Manage sensitive environment variables (API keys, tokens, connection strings) in an encrypted vault (OS keychain master key + ChaCha20-Poly1305 on-disk store). Several contexts can be active at once, layered by priority, and values can reference each other with `{$VAR}`.
-- **Syntax highlighting** &mdash; IPs, hostnames and comments are color-coded in the editor.
+- **Syntax highlighting and checks** &mdash; IPs, hostnames and comments are color-coded in the editor. Invalid addresses or hostnames, and hostnames another active context also defines, are underlined and listed with which context wins.
+- **Outside-change detection** &mdash; If another program rewrites `/etc/hosts` and drops or alters Bypass's block, a banner offers to re-apply it.
+- **Instant effect** &mdash; The macOS DNS cache is flushed every time the hosts file is written.
 - **System Hosts / Active Variables views** &mdash; Read-only previews of the current `/etc/hosts` file and of the merged variables your shells receive, auto-refreshed when contexts change.
 - **Import / Export** &mdash; Import hosts or `.env` files by drag-and-drop or from the clipboard; export any screen as a plain hosts or `KEY=value` file using native OS file dialogs.
 - **Touch ID support** &mdash; Biometric authentication to authorize hosts file changes (no double prompt).
@@ -63,6 +65,8 @@ If you use [Task](https://taskfile.dev/) (`go-task`), common commands are wrappe
 | Build (release) | `task build` | Full `pnpm tauri build`. Requires `TAURI_SIGNING_PRIVATE_KEY` when `createUpdaterArtifacts` is enabled in `src-tauri/tauri.conf.json`. |
 | Build (local) | `task build:local` | Release build without code signing and without updater artifacts (`--no-sign` and `createUpdaterArtifacts: false` for that run). Use when you do not have signing keys locally. |
 | Frontend only | `task build:frontend` | Runs `pnpm build` (TypeScript + Vite); does not invoke Tauri. |
+| Lint | `task lint` | Runs ESLint (`pnpm lint`) and `cargo clippy` with warnings as errors. |
+| Test | `task test` | Runs Vitest (`pnpm test`) and `cargo test` for the whole workspace. |
 | Preview | `task preview` | Serves the Vite production build (`pnpm preview`); no native shell. |
 | Clean | `task clean` | Deletes `dist/` and runs `cargo clean` for `src-tauri`. |
 | Clean all | `task clean:all` | Runs `task clean`, then removes `node_modules/`. |
@@ -95,7 +99,8 @@ bypass/
 │   ├── services/
 │   │   └── tauri.ts            # Tauri IPC bindings
 │   └── utils/
-│       └── envFormat.ts        # `.env` serialization for exports
+│       ├── envFormat.ts        # `.env` parsing and serialization
+│       └── hostsValidation.ts  # Hosts entry checks shown in the editor
 ├── src-tauri/                  # Tauri app crate (Rust)
 │   ├── Cargo.toml              # Crate manifest
 │   ├── src/
@@ -104,6 +109,7 @@ bypass/
 │   │   ├── credentials.rs      # Credential vault Tauri commands
 │   │   ├── agent.rs            # Local socket agent that serves variables to shells
 │   │   ├── hosts.rs            # Hosts file read/write/merge logic
+│   │   ├── hosts_watch.rs      # Detects outside changes to the hosts file
 │   │   ├── biometric.rs        # Touch ID authentication (macOS)
 │   │   ├── tray.rs             # System tray menu
 │   │   ├── models.rs           # Data models (Context, AppConfig)
@@ -119,6 +125,7 @@ bypass/
 │   └── tauri.conf.json         # Tauri configuration
 └── .github/
     └── workflows/
+        ├── checks.yml                  # CI: lint + tests on PRs; gates releases
         └── version-tag-and-binary.yml  # CI: build binaries on merged PRs
 ```
 
