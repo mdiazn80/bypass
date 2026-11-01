@@ -1,8 +1,8 @@
 name: Checks
 
-# Lint and tests for the frontend and the Rust workspace.
-# Runs on every pull request into `develop` or `main`, on pushes to `develop`,
-# and is called by the release workflow so a failing check blocks the release.
+# Lint and tests for the frontend and the Rust workspace, on every pull request
+# into `develop` or `main` and on pushes to `develop`. The steps live in
+# `.github/actions/checks`, which the release workflow also runs before tagging.
 on:
   pull_request:
     branches:
@@ -11,7 +11,6 @@ on:
   push:
     branches:
       - develop
-  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -52,22 +51,5 @@ jobs:
         with:
           workspaces: .
 
-      - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: ESLint
-        run: pnpm lint
-
-      - name: Frontend tests
-        run: pnpm test
-
-      # Type-checks the frontend and produces `dist/`, which the Tauri crate
-      # embeds at compile time.
-      - name: Frontend build
-        run: pnpm build
-
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Rust tests
-        run: cargo test --workspace
+      - name: Lint and test
+        uses: ./.github/actions/checks

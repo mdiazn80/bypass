@@ -1,0 +1,33 @@
+name: Lint and test
+description: >
+  ESLint, Vitest, frontend build, Clippy and Rust tests. Expects pnpm, Node.js
+  and a Rust toolchain with Clippy to be set up by the calling job.
+
+runs:
+  using: composite
+  steps:
+    - name: Install frontend dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: ESLint
+      shell: bash
+      run: pnpm lint
+
+    - name: Frontend tests
+      shell: bash
+      run: pnpm test
+
+    # Type-checks the frontend and produces `dist/`, which the Tauri crate
+    # embeds at compile time.
+    - name: Frontend build
+      shell: bash
+      run: pnpm build
+
+    - name: Clippy
+      shell: bash
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+    - name: Rust tests
+      shell: bash
+      run: cargo test --workspace

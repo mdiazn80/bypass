@@ -124,9 +124,11 @@ bypass/
 │   │       └── vault.rs        # High-level API
 │   └── tauri.conf.json         # Tauri configuration
 └── .github/
+    ├── actions/
+    │   └── checks/action.yml           # Lint + tests, shared by both workflows
     └── workflows/
-        ├── checks.yml                  # CI: lint + tests on PRs; gates releases
-        └── version-tag-and-binary.yml  # CI: build binaries on merged PRs
+        ├── checks.yml                  # CI: lint + tests on PRs and pushes to develop
+        └── version-tag-and-binary.yml  # CI: check, tag and build on merged PRs
 ```
 
 ## How It Works
@@ -220,7 +222,10 @@ A value can reuse another variable with `{$VAR}`. References are resolved agains
 
 ## CI / CD
 
-A GitHub Actions workflow (`.github/workflows/version-tag-and-binary.yml`) builds binaries automatically when a pull request from `develop` is merged into `main`. It produces a signed and notarized macOS release, along with a `latest.json` updater manifest.
+Two GitHub Actions workflows share the lint and test steps in `.github/actions/checks`:
+
+- **Checks** (`.github/workflows/checks.yml`) runs ESLint, Vitest, the frontend build, Clippy and `cargo test` on every pull request into `develop` or `main` and on pushes to `develop`.
+- **Version tag and binary** (`.github/workflows/version-tag-and-binary.yml`) runs when a pull request from `develop` is merged into `main`. A single macOS job runs the same checks, then bumps the version and pushes the tag, then builds a signed and notarized macOS release. A failing check stops it before anything is tagged or published. A second job assembles the `latest.json` updater manifest.
 
 For a step-by-step guide on generating the key pair and obtaining every required secret, see **[docs/release-signing.md](docs/release-signing.md)**.
 
