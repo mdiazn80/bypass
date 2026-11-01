@@ -3,9 +3,12 @@ name: Version tag and binary
 # Runs when a pull request from branch `develop` into `main` is merged (after approval).
 # Can also be run manually (Actions → Run workflow).
 #
-# Builds and uploads:
-# - macOS Apple Silicon (signed + notarized DMG + app.tar.gz for updater) — arm64
-# - latest.json — updater manifest consumed by tauri-plugin-updater
+# One macOS job, in this order, so nothing is published when a check fails:
+# 1. Lint and tests (`.github/actions/checks`, shared with the Checks workflow).
+# 2. Version bump commit and tag, pushed to the target branch.
+# 3. Build, sign and notarize from that same checkout, then upload:
+#    - macOS Apple Silicon (signed + notarized DMG + app.tar.gz for updater) — arm64
+#    - latest.json — updater manifest consumed by tauri-plugin-updater (separate job)
 #
 # Notarization: APPLE_ID (email), APPLE_PASSWORD (app-specific password, appleid.apple.com), APPLE_TEAM_ID.
 # Certificate: Developer ID Application in the .p12 (Apple Development cannot notarize for distribution).
@@ -26,50 +29,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  checks:
+  release-macos-arm64:
+    name: Check, tag, build, sign & notarize desktop (DMG, macOS Apple Silicon)
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop')
-    uses: ./.github/workflows/checks.yml
-
-  tag:
-    needs: checks
-    runs-on: ubuntu-latest
+    runs-on: macos-26
     outputs:
       tag: ${{ steps.version_tag.outputs.tag }}
+    env:
+      CI: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.pull_request.merge_commit_sha }}
-
-      - name: Create and push tag
-        id: version_tag
-        env:
-          TZ: UTC
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: bash scripts/ci-tag-version-push.sh
-
-  build-macos-arm64:
-    name: Build, sign & notarize desktop (DMG, macOS Apple Silicon)
-    needs: tag
-    runs-on: macos-26
-    env:
-      CI: true
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: refs/tags/${{ needs.tag.outputs.tag }}
 
       - name: pnpm
         uses: pnpm/action-setup@v5
@@ -85,18 +58,44 @@ jobs:
 
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
       - name: Cargo cache
         uses: Swatinem/rust-cache@v2.9.1
         with:
           workspaces: .
 
+      # Before tagging: a failure here leaves no release commit or tag behind.
+      # Signing secrets are not in the environment yet, so dependency install
+      # scripts and tests never see them.
+      - name: Lint and test
+        uses: ./.github/actions/checks
+
+      - name: Create and push tag
+        id: version_tag
+        env:
+          TZ: UTC
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: bash scripts/ci-tag-version-push.sh
+
+      # The checkout is now at the tagged release commit.
       - name: Build, sign, notarize, normalize DMG
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bash scripts/ci-macos-release-signed-only.sh
 
       - name: Prepare macOS updater artifact
         env:
-          TAG: ${{ needs.tag.outputs.tag }}
+          TAG: ${{ steps.version_tag.outputs.tag }}
         run: |
           mkdir -p dist
           python3 << 'PY'
@@ -129,7 +128,7 @@ jobs:
       - name: Upload DMG to release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.tag.outputs.tag }}
+          tag_name: ${{ steps.version_tag.outputs.tag }}
           files: target/release/bundle/dmg/Bypass-arm64.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,7 +136,7 @@ jobs:
       - name: Upload app tarball to release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.tag.outputs.tag }}
+          tag_name: ${{ steps.version_tag.outputs.tag }}
           files: dist/Bypass-arm64.app.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -150,7 +149,7 @@ jobs:
 
   publish-updater:
     name: Publish updater manifest (latest.json)
-    needs: [tag, build-macos-arm64]
+    needs: release-macos-arm64
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -167,13 +166,13 @@ jobs:
 
       - name: Assemble latest.json
         env:
-          TAG: ${{ needs.tag.outputs.tag }}
+          TAG: ${{ needs.release-macos-arm64.outputs.tag }}
         run: bash scripts/ci-publish-updater-manifest.sh
 
       - name: Upload latest.json to release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.tag.outputs.tag }}
+          tag_name: ${{ needs.release-macos-arm64.outputs.tag }}
           files: latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
