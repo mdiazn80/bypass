@@ -1,0 +1,73 @@
+name: Checks
+
+# Lint and tests for the frontend and the Rust workspace.
+# Runs on every pull request into `develop` or `main`, on pushes to `develop`,
+# and is called by the release workflow so a failing check blocks the release.
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: Lint and test
+    # macOS: the app crate links the keychain and Touch ID code paths.
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2.9.1
+        with:
+          workspaces: .
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Frontend tests
+        run: pnpm test
+
+      # Type-checks the frontend and produces `dist/`, which the Tauri crate
+      # embeds at compile time.
+      - name: Frontend build
+        run: pnpm build
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --workspace

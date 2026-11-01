@@ -67,7 +67,9 @@
   overflow-y: auto;
   padding: 20px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* The network column gets the extra width: a full IPv6 address needs
+   * roughly 310px on one line, while the machine facts are short. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
   gap: 20px;
   align-items: start;
 }
@@ -77,8 +79,9 @@
   grid-column: 1 / -1;
 }
 
-/* Narrow windows stack the columns instead of squeezing addresses. */
-@media (max-width: 760px) {
+/* Below this width the network column can no longer fit a full IPv6 address
+ * plus its adapter name, so the columns stack instead of wrapping it. */
+@media (max-width: 980px) {
   .dashboard-body {
     grid-template-columns: 1fr;
   }

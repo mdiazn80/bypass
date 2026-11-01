@@ -79,7 +79,7 @@ fn run(shell: Shell) -> Result<String, Box<dyn std::error::Error>> {
 
     let mut lines = resp.lines();
     match lines.next() {
-        Some("UNCHANGED") => return Ok(String::new()),
+        Some("UNCHANGED") => Ok(String::new()),
         Some(first) if first.starts_with("GEN ") => {
             let new_gen: u64 = first[4..].trim().parse().unwrap_or(gen);
             let mut vars: Vec<(String, String)> = Vec::new();

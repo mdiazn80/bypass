@@ -16,9 +16,16 @@ interface ContextStore {
   togglingId: string | null;
   /** A reorder is being applied to the hosts file (needs administrator rights). */
   reordering: boolean;
+  /** The managed block in the hosts file matches the enabled contexts. */
+  hostsInSync: boolean;
+  /** The block is being written again after an outside change. */
+  reapplying: boolean;
   error: string | null;
   load: () => Promise<void>;
   loadSystemHosts: () => Promise<void>;
+  /** Called when the hosts file changed on disk, by Bypass or anything else. */
+  hostsChanged: (inSync: boolean) => Promise<void>;
+  reapply: () => Promise<void>;
   create: (name: string) => Promise<void>;
   update: (id: string, name?: string, content?: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
@@ -45,6 +52,8 @@ export const useContextStore = create<ContextStore>((set, get) => ({
   systemHosts: "",
   togglingId: null,
   reordering: false,
+  hostsInSync: true,
+  reapplying: false,
   error: null,
 
   load: async () => {
@@ -53,6 +62,7 @@ export const useContextStore = create<ContextStore>((set, get) => ({
       const contexts = await api.listContexts();
       set({ contexts, loading: false });
       await refreshSystemHosts(set);
+      set({ hostsInSync: await api.getHostsSync() });
     } catch (err) {
       set({ loading: false, error: String(err) });
     }
@@ -64,6 +74,24 @@ export const useContextStore = create<ContextStore>((set, get) => ({
       set({ systemHosts });
     } catch {
       // Non-critical
+    }
+  },
+
+  hostsChanged: async (inSync: boolean) => {
+    set({ hostsInSync: inSync });
+    await refreshSystemHosts(set);
+  },
+
+  reapply: async () => {
+    set({ reapplying: true });
+    try {
+      await api.reapplyHosts();
+      set({ hostsInSync: true, error: null });
+      await refreshSystemHosts(set);
+    } catch (err) {
+      set({ error: String(err) });
+    } finally {
+      set({ reapplying: false });
     }
   },
 

@@ -17,6 +17,16 @@ import { useConfigStore } from "./stores/useConfigStore";
 import { useCredentialStore } from "./stores/useCredentialStore";
 import "./App.css";
 
+/** A newer version if there is one, `null` if up to date, `undefined` if the check failed. */
+async function findUpdate(): Promise<Update | null | undefined> {
+  try {
+    const update = await check();
+    return update?.available ? update : null;
+  } catch {
+    return undefined;
+  }
+}
+
 function App() {
   const [view, setView] = useState<View>("home");
   const [showAbout, setShowAbout] = useState(false);
@@ -25,26 +35,25 @@ function App() {
   const loadContexts = useContextStore((s) => s.load);
   const contextError = useContextStore((s) => s.error);
   const clearContextError = useContextStore((s) => s.clearError);
+  const hostsInSync = useContextStore((s) => s.hostsInSync);
+  const reapplying = useContextStore((s) => s.reapplying);
+  const reapplyHosts = useContextStore((s) => s.reapply);
+  const hostsChanged = useContextStore((s) => s.hostsChanged);
   const loadConfig = useConfigStore((s) => s.load);
   const loadCredentials = useCredentialStore((s) => s.load);
   const credentialError = useCredentialStore((s) => s.error);
   const clearCredentialError = useCredentialStore((s) => s.clearError);
 
-  async function runUpdateCheck(manual: boolean) {
-    if (manual) {
-      setUpdateState({ phase: "checking", version: "", downloaded: 0, total: null });
-    }
-    try {
-      const update = await check();
-      if (update?.available) {
-        pendingUpdate.current = update;
-        setUpdateState({ phase: "available", version: update.version, downloaded: 0, total: null });
-      } else if (manual) {
-        setUpdateState({ phase: "up-to-date", version: "", downloaded: 0, total: null });
-        setTimeout(() => setUpdateState(null), 4000);
-      }
-    } catch {
-      if (manual) setUpdateState(null);
+  /** A manual check reports every outcome; the startup one only a new version. */
+  function showUpdateResult(update: Update | null | undefined, manual: boolean) {
+    if (update) {
+      pendingUpdate.current = update;
+      setUpdateState({ phase: "available", version: update.version, downloaded: 0, total: null });
+    } else if (manual && update === null) {
+      setUpdateState({ phase: "up-to-date", version: "", downloaded: 0, total: null });
+      setTimeout(() => setUpdateState(null), 4000);
+    } else if (manual) {
+      setUpdateState(null);
     }
   }
 
@@ -52,16 +61,24 @@ function App() {
     loadContexts();
     loadConfig();
     loadCredentials();
-    runUpdateCheck(false);
+    findUpdate().then((update) => showUpdateResult(update, false));
 
     const unlistenAbout = listen("show-about", () => setShowAbout(true));
-    const unlistenCheckUpdates = listen("check-for-updates", () => runUpdateCheck(true));
+    const unlistenHosts = listen<{ in_sync: boolean }>("hosts-changed", (event) =>
+      hostsChanged(event.payload.in_sync)
+    );
+    const unlistenCheckUpdates = listen("check-for-updates", () => {
+      setUpdateState({ phase: "checking", version: "", downloaded: 0, total: null });
+      findUpdate().then((update) => showUpdateResult(update, true));
+    });
 
     return () => {
       unlistenAbout.then((fn) => fn());
       unlistenCheckUpdates.then((fn) => fn());
+      unlistenHosts.then((fn) => fn());
     };
-  }, []);
+    // The store actions are stable, so this still runs once on mount.
+  }, [loadContexts, loadConfig, loadCredentials, hostsChanged]);
 
   async function handleInstallUpdate() {
     const update = pendingUpdate.current;
@@ -129,6 +146,17 @@ function App() {
         )}
         {view === "settings" && <Settings />}
       </div>
+      {!hostsInSync && (
+        <div className="error-banner warning" role="alert">
+          <span className="error-banner-message">
+            Another program changed /etc/hosts and the entries of your active hosts contexts are
+            missing or out of date.
+          </span>
+          <button className="error-banner-action" onClick={reapplyHosts} disabled={reapplying}>
+            {reapplying ? "Re-applying…" : "Re-apply"}
+          </button>
+        </div>
+      )}
       {contextError && (
         <div className="error-banner" role="alert">
           <span className="error-banner-message">{contextError}</span>

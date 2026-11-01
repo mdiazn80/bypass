@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run",
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2",
@@ -21,11 +23,17 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "typescript-eslint": "^8.72.1",
+    "vite": "^7.0.4",
+    "vitest": "^5.0.5"
   }
 }

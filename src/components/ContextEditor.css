@@ -223,6 +223,39 @@
   color: #60a5fa;
 }
 
+/* Underline only: the highlight layer must keep the textarea's text metrics. */
+.hl-issue {
+  color: #fbbf24;
+  text-decoration: underline wavy rgba(251, 191, 36, 0.7);
+  text-underline-offset: 3px;
+}
+
+/* Problems found in the entries, listed under the editor. */
+.editor-issues {
+  flex-shrink: 0;
+  max-height: 120px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 8px 20px;
+  list-style: none;
+  border-top: 1px solid #2e2e2e;
+  background: #161616;
+  font-size: 12px;
+  color: #fbbf24;
+}
+
+.editor-issues li + li {
+  margin-top: 4px;
+}
+
+.editor-issue-line {
+  display: inline-block;
+  min-width: 56px;
+  margin-right: 8px;
+  color: #777;
+  font-family: var(--font-mono);
+}
+
 .hl-placeholder {
   color: #444;
   font-style: italic;

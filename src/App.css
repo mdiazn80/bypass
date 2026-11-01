@@ -87,3 +87,30 @@ body {
 .error-banner-dismiss:hover {
   color: #fca5a5;
 }
+
+.error-banner.warning {
+  background: #33290f;
+  border-top-color: #6b5520;
+  color: #fbbf24;
+}
+
+.error-banner-action {
+  flex-shrink: 0;
+  background: #2a2a2a;
+  color: #ddd;
+  border: 1px solid #4a4a4a;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.error-banner-action:hover:not(:disabled) {
+  border-color: #6b5520;
+  color: #fbbf24;
+}
+
+.error-banner-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
