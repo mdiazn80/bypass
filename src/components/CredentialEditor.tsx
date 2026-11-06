@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { open } from "@tauri-apps/plugin-dialog";
 import { useCredentialStore, ACTIVE_VARS_ID } from "../stores/useCredentialStore";
 import { useConfigStore } from "../stores/useConfigStore";
 import FileDropZone from "./FileDropZone";
 import ExportButton from "./ExportButton";
-import { parseEnv, parsePasted, safeFileName, toEnvFile } from "../utils/envFormat";
+import { formatBytes, parseEnv, parsePasted, safeFileName, toEnvFile } from "../utils/envFormat";
 import "./ContextEditor.css";
 import "./CredentialEditor.css";
 
@@ -16,13 +17,29 @@ function draftsFrom(vars: { key: string; value: string }[]): Record<string, stri
   return drafts;
 }
 
+function FileIcon() {
+  return (
+    <svg className="cred-file-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+    </svg>
+  );
+}
+
+/** Last component of a path chosen in the native file dialog. */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path;
+}
+
 /**
  * Read-only view of the merged variables every shell receives: all active
  * contexts layered by priority. The credential counterpart of System Hosts.
  */
 function ActiveVarsSummary() {
   const { contexts, activeVars, selectContext } = useCredentialStore();
-  const activeContexts = useConfigStore((s) => s.shellStatus?.active_contexts ?? []);
+  // The fallback stays outside the selector: returning a new `[]` from it makes
+  // the store look changed on every read, which loops until React gives up.
+  const activeContexts = useConfigStore((s) => s.shellStatus?.active_contexts) ?? [];
   // Sidebar order is the priority order; keep only the active ones.
   const active = contexts.filter((c) => activeContexts.includes(c.name));
 
@@ -36,7 +53,7 @@ function ActiveVarsSummary() {
             filterName="Env file"
             extensions={["env", "txt"]}
             getContent={() => toEnvFile(activeVars)}
-            title="Export the merged variables as KEY=value"
+            title="Export the merged variables as KEY=value. File variables export their path, not their content"
           />
           <span className="editor-status">Read-only</span>
         </div>
@@ -73,6 +90,7 @@ function ActiveVarsSummary() {
                 <div className="cred-var-item" key={v.key}>
                   <div className="cred-var-row">
                     <span className="cred-var-key">{v.key}</span>
+                    {v.file && <FileIcon />}
                     <span className="cred-var-value" title={v.raw !== v.value ? v.raw : undefined}>
                       {v.value}
                     </span>
@@ -104,7 +122,7 @@ function ActiveVarsSummary() {
 }
 
 export default function CredentialEditor() {
-  const { contexts, selectedName, vars, updateContext, renameContext, setVar, setVars, deleteVar } =
+  const { contexts, selectedName, vars, updateContext, renameContext, setVar, setVars, setFile, deleteVar } =
     useCredentialStore();
 
   const selected = contexts.find((c) => c.name === selectedName);
@@ -113,6 +131,8 @@ export default function CredentialEditor() {
   const [editingName, setEditingName] = useState(false);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
+  const [addKind, setAddKind] = useState<"text" | "file">("text");
+  const [newFilePath, setNewFilePath] = useState<string | null>(null);
   // Per-row editable drafts of the values, keyed by variable name.
   const [drafts, setDrafts] = useState(() => draftsFrom(vars));
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
@@ -130,6 +150,7 @@ export default function CredentialEditor() {
     setDescription(selected?.description ?? "");
     setName(selected?.name ?? "");
     setEditingName(false);
+    setNewFilePath(null);
   }
 
   // Reset drafts whenever the persisted values change (context switch or save).
@@ -249,6 +270,30 @@ export default function CredentialEditor() {
     void setVar(key, drafts[key] ?? "");
   };
 
+  /** Asks for the file of a stored variable and replaces its content. */
+  const replaceFile = async (key: string) => {
+    const path = await open({ multiple: false });
+    if (typeof path === "string") await setFile(key, path);
+  };
+
+  const handleChooseNewFile = async () => {
+    const path = await open({ multiple: false });
+    if (typeof path === "string") setNewFilePath(path);
+  };
+
+  const handleAddFile = async () => {
+    const key = newKey.trim();
+    if (!key || !newFilePath) return;
+    await setFile(key, newFilePath);
+    setNewKey("");
+    setNewFilePath(null);
+  };
+
+  const handleAdd = () => {
+    if (addKind === "file") void handleAddFile();
+    else void handleAddVar();
+  };
+
   return (
     <div className="editor">
       <div className="editor-header">
@@ -295,7 +340,7 @@ export default function CredentialEditor() {
               // Templates are exported as stored, `{$VAR}` references included,
               // so the file re-imports without freezing them.
               getContent={() => toEnvFile(vars)}
-              title="Export these variables as KEY=value"
+              title="Export these variables as KEY=value. File variables export their path, not their content"
             />
           </div>
         )}
@@ -314,10 +359,6 @@ export default function CredentialEditor() {
         />
 
         <p className="cred-hint">
-          A <code>.bypass-context</code> file in a project directory overrides the global active context for the CLI.
-        </p>
-
-        <p className="cred-hint">
           Use <code>{"{$VAR}"}</code> to reuse another variable of this context &mdash; for
           example <code>{"{$APP_PATH}/config"}</code>. References resolve when the value reaches
           your shell, so editing the source updates everything derived from it.
@@ -325,6 +366,34 @@ export default function CredentialEditor() {
 
         <div className="cred-vars">
           {vars.map((v) => {
+            if (v.file) {
+              return (
+                <div className="cred-var-item" key={v.key}>
+                  <div className="cred-var-row">
+                    <span className="cred-var-key">{v.key}</span>
+                    <div className="cred-var-file" title={v.file.path}>
+                      <FileIcon />
+                      <span className="cred-var-file-name">{v.file.filename}</span>
+                      <span className="cred-var-file-size">{formatBytes(v.file.size)}</span>
+                    </div>
+                    <button
+                      className="cred-var-btn"
+                      title="Replace the stored file"
+                      onClick={() => void replaceFile(v.key)}
+                    >
+                      replace
+                    </button>
+                    <button
+                      className="cred-var-btn danger"
+                      title="Delete variable and its stored file"
+                      onClick={() => deleteVar(v.key)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              );
+            }
             const draft = drafts[v.key] ?? v.value;
             const dirty = draft !== v.value;
             // Reported against the saved template, so it is hidden while the row
@@ -379,13 +448,29 @@ export default function CredentialEditor() {
         </div>
 
         <div className="cred-add">
+          <div className="cred-add-kind" role="group" aria-label="Variable type">
+            <button
+              className={addKind === "text" ? "active" : ""}
+              aria-pressed={addKind === "text"}
+              onClick={() => setAddKind("text")}
+            >
+              Text
+            </button>
+            <button
+              className={addKind === "file" ? "active" : ""}
+              aria-pressed={addKind === "file"}
+              onClick={() => setAddKind("file")}
+            >
+              File
+            </button>
+          </div>
           <input
             className="cred-add-key"
             value={newKey}
             placeholder="KEY"
             onChange={(e) => setNewKey(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddVar();
+              if (e.key === "Enter") handleAdd();
             }}
             onPaste={(e) => {
               // A pasted `KEY=value` goes straight into the context; a bare
@@ -396,26 +481,51 @@ export default function CredentialEditor() {
               void importPasted(text);
             }}
           />
-          <input
-            className="cred-add-value"
-            value={newValue}
-            placeholder="value"
-            onChange={(e) => setNewValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddVar();
-            }}
-          />
-          <button className="cred-add-btn" onClick={handleAddVar}>
+          {addKind === "text" ? (
+            <input
+              className="cred-add-value"
+              value={newValue}
+              placeholder="value"
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdd();
+              }}
+            />
+          ) : (
+            <button
+              className={`cred-add-file${newFilePath ? " chosen" : ""}`}
+              title={newFilePath ?? undefined}
+              onClick={() => void handleChooseNewFile()}
+            >
+              <FileIcon />
+              <span className="cred-add-file-label">
+                {newFilePath ? baseName(newFilePath) : "Choose a file…"}
+              </span>
+            </button>
+          )}
+          <button
+            className="cred-add-btn"
+            onClick={handleAdd}
+            disabled={addKind === "file" && (!newKey.trim() || !newFilePath)}
+          >
             Add
           </button>
-          <button
-            className="cred-paste-btn"
-            onClick={handlePasteButton}
-            title="Paste KEY=value lines from the clipboard into this context"
-          >
-            Paste
-          </button>
+          {addKind === "text" && (
+            <button
+              className="cred-paste-btn"
+              onClick={handlePasteButton}
+              title="Paste KEY=value lines from the clipboard into this context"
+            >
+              Paste
+            </button>
+          )}
         </div>
+        {addKind === "file" && (
+          <p className="cred-hint">
+            Bypass keeps an encrypted copy, up to 1 MiB, and the variable holds its path. The file
+            is on disk only while this context is active and Bypass is running.
+          </p>
+        )}
         {pasteNotice && <div className="cred-paste-notice">{pasteNotice}</div>}
       </div>
     </div>

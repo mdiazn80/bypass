@@ -1,13 +1,13 @@
-use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
 
+use base64::Engine;
 use zeroize::Zeroizing;
 
 use super::crypto::{self, KEY_LEN};
 use super::error::BypassError;
 use super::keystore;
-use super::model::{ContextEntry, CredentialContext, VaultData};
+use super::model::{ContextEntry, CredentialContext, FileVar, VaultData};
 
 /// Abstract, swappable storage surface for secret values.
 ///
@@ -115,7 +115,7 @@ impl HybridBackend {
                 description: description.to_string(),
                 created_at: ts.clone(),
                 updated_at: ts,
-                vars: BTreeMap::new(),
+                ..ContextEntry::default()
             },
         );
         self.store(&data)
@@ -157,15 +157,55 @@ impl HybridBackend {
         self.store(&data)
     }
 
-    /// Returns every variable of a context in a single decryption pass, unlike
-    /// repeated [`SecretBackend::get`] calls which reload the store each time.
-    pub fn all_vars(&self, context: &str) -> Result<BTreeMap<String, String>, BypassError> {
-        let data = self.load()?;
+    /// Returns one context as stored, files included.
+    pub(crate) fn entry(&self, context: &str) -> Result<ContextEntry, BypassError> {
+        self.load()?
+            .contexts
+            .remove(context)
+            .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))
+    }
+
+    /// Returns the requested contexts in order, in a single decryption pass.
+    /// Contexts that no longer exist are skipped, so a stale active-context name
+    /// is harmless.
+    pub(crate) fn entries(
+        &self,
+        contexts: &[String],
+    ) -> Result<Vec<(String, ContextEntry)>, BypassError> {
+        let mut data = self.load()?;
+        Ok(contexts
+            .iter()
+            .filter_map(|name| Some((name.clone(), data.contexts.remove(name)?)))
+            .collect())
+    }
+
+    /// Creates or replaces a file variable, taking over the key if it was a
+    /// plain variable.
+    pub fn set_file(
+        &self,
+        context: &str,
+        key: &str,
+        filename: &str,
+        content: &[u8],
+    ) -> Result<(), BypassError> {
+        let mut data = self.load()?;
+        let ts = now();
         let entry = data
             .contexts
-            .get(context)
+            .get_mut(context)
             .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
-        Ok(entry.vars.clone())
+        entry.vars.remove(key);
+        entry.files.insert(
+            key.to_string(),
+            FileVar {
+                filename: filename.to_string(),
+                content: base64::engine::general_purpose::STANDARD.encode(content),
+                size: content.len() as u64,
+                updated_at: ts.clone(),
+            },
+        );
+        entry.updated_at = ts;
+        self.store(&data)
     }
 
     /// Returns public metadata for every context, sorted by name.
@@ -206,8 +246,9 @@ impl SecretBackend for HybridBackend {
             description: String::new(),
             created_at: ts.clone(),
             updated_at: ts.clone(),
-            vars: BTreeMap::new(),
+            ..ContextEntry::default()
         });
+        entry.files.remove(key);
         entry.vars.insert(key.to_string(), value.to_string());
         entry.updated_at = ts;
         self.store(&data)
@@ -219,7 +260,7 @@ impl SecretBackend for HybridBackend {
             .contexts
             .get_mut(context)
             .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
-        if entry.vars.remove(key).is_none() {
+        if entry.vars.remove(key).is_none() && entry.files.remove(key).is_none() {
             return Err(BypassError::KeyNotFound(key.to_string(), context.to_string()));
         }
         entry.updated_at = now();
@@ -232,7 +273,9 @@ impl SecretBackend for HybridBackend {
             .contexts
             .get(context)
             .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
-        Ok(entry.vars.keys().cloned().collect())
+        let mut keys: Vec<String> = entry.vars.keys().chain(entry.files.keys()).cloned().collect();
+        keys.sort();
+        Ok(keys)
     }
 }
 

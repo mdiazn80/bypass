@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseEnv, parsePasted, safeFileName, toEnvFile } from "./envFormat";
+import { formatBytes, parseEnv, parsePasted, safeFileName, toEnvFile } from "./envFormat";
 
 describe("toEnvFile", () => {
   it("writes safe values bare, one per line, with a final newline", () => {
@@ -85,5 +85,12 @@ describe("parsePasted", () => {
 describe("safeFileName", () => {
   it("replaces anything outside letters, digits, `_` and `-`", () => {
     expect(safeFileName("Prod / EU-west 1.env")).toBe("Prod___EU-west_1_env");
+  });
+});
+
+describe("formatBytes", () => {
+  it("uses bytes below 1 KiB and KiB from there on", () => {
+    expect(formatBytes(512)).toBe("512 B");
+    expect(formatBytes(1536)).toBe("1.5 KiB");
   });
 });

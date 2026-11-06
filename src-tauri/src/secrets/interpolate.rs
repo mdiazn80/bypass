@@ -18,6 +18,8 @@
 use serde::Serialize;
 use std::collections::BTreeMap;
 
+use super::model::FileMeta;
+
 /// Nesting limit for chained references. Cycles are caught separately; this only
 /// bounds pathological depth.
 const MAX_DEPTH: usize = 32;
@@ -37,6 +39,8 @@ pub struct ResolvedVar {
     pub value: String,
     /// Human-readable description of the first problem found, if any.
     pub issue: Option<String>,
+    /// Set when the variable is a file; `value` is then its path.
+    pub file: Option<FileMeta>,
 }
 
 /// Resolves every variable of a context against the others. Key order is
@@ -53,6 +57,7 @@ pub fn resolve_all(vars: &BTreeMap<String, String>) -> Vec<ResolvedVar> {
                 raw: raw.clone(),
                 value,
                 issue,
+                file: None,
             }
         })
         .collect()
@@ -148,7 +153,7 @@ fn parse_ref(rest: &str) -> Option<(&str, usize)> {
 
 /// Environment-variable name rules. Kept in sync with `is_valid_name` in
 /// `crates/bypass-shell/src/main.rs`, which drops anything else on the way out.
-fn is_valid_name(name: &str) -> bool {
+pub(super) fn is_valid_name(name: &str) -> bool {
     !name.is_empty()
         && name
             .bytes()

@@ -36,6 +36,15 @@ export interface CredentialContext {
 }
 
 /** A credential variable with its `{$VAR}` references resolved. */
+/** A variable whose value is a file stored in the vault. */
+export interface FileMeta {
+  filename: string;
+  size: number;
+  updated_at: string;
+  /** Where the file is available while its context is active. */
+  path: string;
+}
+
 export interface ResolvedVar {
   key: string;
   /** The template as stored — what the editor shows and saves. */
@@ -44,6 +53,8 @@ export interface ResolvedVar {
   value: string;
   /** Set when a reference is missing, cyclic or too deep. */
   issue: string | null;
+  /** Set when the variable is a file; `value` is then its path. */
+  file: FileMeta | null;
 }
 
 /** A variable of the merged set every shell receives. */
@@ -58,6 +69,8 @@ export interface MergedVar {
   /** Lower-priority contexts that also define the key, in priority order. */
   shadowed: string[];
   issue: string | null;
+  /** Set when the variable is a file; `value` is then its path. */
+  file: FileMeta | null;
 }
 
 export interface MachineInfo {

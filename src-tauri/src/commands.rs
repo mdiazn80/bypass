@@ -246,7 +246,7 @@ pub fn set_context_active(
         }
         storage::save_config(&cfg)?;
     }
-    agent::bump_gen(&state);
+    agent::publish(&state)?;
     Ok(build_status(&state))
 }
 
@@ -262,7 +262,7 @@ pub fn reorder_credential_contexts(
         storage::save_config(&cfg)?;
     }
     // Priority between active contexts may have changed.
-    agent::bump_gen(&state);
+    agent::publish(&state)?;
     Ok(build_status(&state))
 }
 
@@ -289,6 +289,8 @@ pub fn set_shell_agent_enabled(
         cfg.shell_integration_enabled = enabled;
         storage::save_config(&cfg)?;
     }
+    // Without an agent nothing keeps the files in sync, so they must not linger.
+    agent::sync_files(&state)?;
     Ok(build_status(&state))
 }
 

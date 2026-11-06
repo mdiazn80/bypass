@@ -16,7 +16,9 @@ export default function CredentialSidebar() {
     moveContext,
     refreshActiveVars,
   } = useCredentialStore();
-  const activeContexts = useConfigStore((s) => s.shellStatus?.active_contexts ?? []);
+  // The fallback stays outside the selector: returning a new `[]` from it makes
+  // the store look changed on every read, which loops until React gives up.
+  const activeContexts = useConfigStore((s) => s.shellStatus?.active_contexts) ?? [];
   const setContextActive = useConfigStore((s) => s.setContextActive);
   const loadShellStatus = useConfigStore((s) => s.loadShellStatus);
   const [newName, setNewName] = useState("");

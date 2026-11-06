@@ -10,6 +10,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 
 use super::interpolate::resolve_all;
+use super::model::FileMeta;
 
 /// A variable of the merged active set.
 #[derive(Debug, Clone, Serialize)]
@@ -25,6 +26,8 @@ pub struct MergedVar {
     pub shadowed: Vec<String>,
     /// Set when a reference is missing, cyclic or too deep.
     pub issue: Option<String>,
+    /// Set when the variable is a file; `value` is then its path.
+    pub file: Option<FileMeta>,
 }
 
 /// Layers `contexts` (highest priority first, each with its raw variables)
@@ -58,6 +61,7 @@ pub fn merge(contexts: &[(String, BTreeMap<String, String>)]) -> Vec<MergedVar> 
                 source,
                 shadowed,
                 issue: r.issue,
+                file: None,
             }
         })
         .collect()

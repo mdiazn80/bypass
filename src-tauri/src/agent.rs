@@ -48,9 +48,39 @@ impl AgentHandle {
     }
 }
 
-/// Bumps the generation counter so connected shells refresh on their next prompt.
-pub fn bump_gen(state: &State<AppState>) {
+/// Applies a change to the served variables: brings the file variables on disk
+/// up to date, then bumps the generation counter so connected shells refresh on
+/// their next prompt. Files go first so a shell never receives a path that does
+/// not exist yet. The bump happens even if they fail, as the plain variables
+/// are still good.
+pub fn publish(state: &State<AppState>) -> Result<(), String> {
+    let result = sync_files(state);
     state.gen.fetch_add(1, Ordering::SeqCst);
+    result
+}
+
+/// Writes the files of the active contexts, or removes them all when the agent
+/// is off and no shell can be told about them.
+pub fn sync_files(state: &State<AppState>) -> Result<(), String> {
+    let running = state.agent.lock().map_err(|e| e.to_string())?.is_some();
+    let active = state
+        .config
+        .lock()
+        .map_err(|e| e.to_string())?
+        .active_contexts_by_priority();
+    // Held even when only clearing, to serialize with a sync in progress.
+    let mut guard = state.vault.lock().map_err(|e| e.to_string())?;
+    let result = if running {
+        if guard.is_none() {
+            *guard = Some(Vault::new().map_err(|e| e.to_string())?);
+        }
+        let vault = guard.as_ref().expect("vault initialized above");
+        vault.sync_files(&active).map_err(|e| e.to_string())
+    } else {
+        // Needs no vault, so turning the agent off never prompts for the keychain.
+        crate::secrets::clear_materialized().map_err(|e| e.to_string())
+    };
+    result.map_err(|e| format!("Could not update file variables: {e}"))
 }
 
 /// Starts the listener on a background thread.
@@ -174,6 +204,10 @@ fn build_response(request: &str, app: &AppHandle) -> String {
 /// template, so editing a referenced variable updates its dependants on the next
 /// prompt. References that cannot be resolved are exported verbatim; the GUI is
 /// where the user is told about them.
+///
+/// File variables are written here too. Startup removes them without touching
+/// the vault, to avoid a keychain prompt at login, so this is what restores them
+/// once a shell asks.
 fn vars_for_contexts(
     state: &State<AppState>,
     contexts: &[String],
@@ -183,6 +217,9 @@ fn vars_for_contexts(
         *guard = Some(Vault::new().map_err(|e| e.to_string())?);
     }
     let vault = guard.as_ref().expect("vault initialized above");
+    if let Err(e) = vault.sync_files(contexts) {
+        eprintln!("could not update file variables: {e}");
+    }
     let merged = vault.merged_vars(contexts).map_err(|e| e.to_string())?;
     Ok(merged.into_iter().map(|m| (m.key, m.value)).collect())
 }

@@ -8,6 +8,7 @@
 mod backend;
 mod crypto;
 mod error;
+mod files;
 mod interpolate;
 mod keystore;
 mod merge;
@@ -15,6 +16,7 @@ mod model;
 mod vault;
 
 pub use error::BypassError;
+pub use files::clear_materialized;
 pub use interpolate::ResolvedVar;
 pub use merge::MergedVar;
 pub use model::CredentialContext;
