@@ -1,10 +1,10 @@
 name: Version tag and binary
 
-# Runs when a pull request from branch `develop` into `main` is merged (after approval).
+# Runs when a pull request into `main` is merged (after approval), from any branch.
 # Can also be run manually (Actions → Run workflow).
 #
 # One macOS job, in this order, so nothing is published when a check fails:
-# 1. Lint and tests (`.github/actions/checks`, shared with the Checks workflow).
+# 1. Lint and tests (`.github/actions/checks`).
 # 2. Version bump commit and tag, pushed to the target branch.
 # 3. Build, sign and notarize from that same checkout, then upload:
 #    - macOS Apple Silicon (signed + notarized DMG + app.tar.gz for updater) — arm64
@@ -31,7 +31,7 @@ concurrency:
 jobs:
   release-macos-arm64:
     name: Check, tag, build, sign & notarize desktop (DMG, macOS Apple Silicon)
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'develop')
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: macos-26
     outputs:
       tag: ${{ steps.version_tag.outputs.tag }}
