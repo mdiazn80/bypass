@@ -10,9 +10,9 @@ pub fn create_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     TrayIconBuilder::new()
         .menu(&menu)
         .tooltip("Bypass")
-        // Dedicated artwork: the app icon leaves more space below the shape
-        // than above it, which sits the glyph high in the menu bar. This one
-        // is padded evenly, and macOS scales it to the bar's 18pt height.
+        // Dedicated artwork: the app icon is square, which leaves wide margins
+        // above and below the shape and shrinks it in the menu bar. This one
+        // is cropped tight, and macOS scales it to the bar's 18pt height.
         .icon(tauri::include_image!("icons/tray.png"))
         .icon_as_template(true)
         .on_menu_event(move |app, event| {
