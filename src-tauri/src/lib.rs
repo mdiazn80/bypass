@@ -47,11 +47,16 @@ pub fn run() {
             config: Mutex::new(config),
             vault: Mutex::new(None),
             agent: Mutex::new(None),
-            // Start at 1 so a client with no prior generation (0) always syncs.
-            gen: std::sync::atomic::AtomicU64::new(1),
+            gen: std::sync::atomic::AtomicU64::new(initial_generation()),
         })
         .setup(|app| {
             tray::create_tray(app.handle())?;
+
+            // Sweep file variables left behind by a crash. The agent writes them
+            // back when a shell asks, as every shell resyncs after a restart.
+            if let Err(e) = secrets::clear_materialized() {
+                eprintln!("failed to remove stale file variables: {e}");
+            }
 
             // Migrate away from the legacy LaunchAgent (shown under the signing
             // team name) to SMAppService-based login items.
@@ -148,10 +153,29 @@ pub fn run() {
             credentials::resolve_credential_vars,
             credentials::resolve_active_credential_vars,
             credentials::set_credential_var,
+            credentials::set_credential_file,
             credentials::delete_credential_var,
             system::get_system_info,
             system::get_public_ips,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| {
+            if let tauri::RunEvent::Exit = event {
+                if let Err(e) = secrets::clear_materialized() {
+                    eprintln!("failed to remove file variables: {e}");
+                }
+            }
+        });
+}
+
+/// Unique per launch, so a shell left over from a previous run never matches the
+/// current generation by accident and keeps stale variables. Never 0, which is
+/// what a client with no prior generation sends.
+fn initial_generation() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(1)
+        .max(1)
 }

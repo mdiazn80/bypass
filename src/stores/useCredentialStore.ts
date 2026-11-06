@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { CredentialContext, MergedVar } from "../types";
+import type { CredentialContext, FileMeta, MergedVar } from "../types";
 import * as api from "../services/tauri";
 
 /**
@@ -17,6 +17,8 @@ export interface VarRow {
   value: string;
   /** Set when a reference is missing, cyclic or too deep. */
   issue: string | null;
+  /** Set when the variable is a file; it then has no editable value. */
+  file: FileMeta | null;
 }
 
 interface CredentialStore {
@@ -40,6 +42,7 @@ interface CredentialStore {
   deleteContext: (name: string) => Promise<void>;
   setVar: (key: string, value: string) => Promise<void>;
   setVars: (entries: { key: string; value: string }[]) => Promise<void>;
+  setFile: (key: string, path: string) => Promise<void>;
   deleteVar: (key: string) => Promise<void>;
   clearError: () => void;
 }
@@ -114,7 +117,7 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
       // Ignore the result if the user switched contexts while loading.
       if (get().selectedName !== name) return;
       set({
-        vars: rows.map((r) => ({ key: r.key, value: r.raw, issue: r.issue })),
+        vars: rows.map((r) => ({ key: r.key, value: r.raw, issue: r.issue, file: r.file })),
       });
     } catch (err) {
       set({ error: String(err) });
@@ -184,6 +187,18 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
       for (const { key, value } of entries) {
         await api.setCredentialVar(selectedName, key, value);
       }
+      await get().refreshVars();
+      await get().refreshActiveVars();
+    } catch (err) {
+      set({ error: String(err) });
+    }
+  },
+
+  setFile: async (key: string, path: string) => {
+    const { selectedName } = get();
+    if (!selectedName) return;
+    try {
+      await api.setCredentialFile(selectedName, key, path);
       await get().refreshVars();
       await get().refreshActiveVars();
     } catch (err) {

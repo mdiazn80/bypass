@@ -63,6 +63,12 @@ export function parsePasted(text: string): { key: string; value: string }[] {
   return parseEnv(text);
 }
 
+/** Human-readable file size. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  return `${(bytes / 1024).toFixed(1)} KiB`;
+}
+
 /** File-safe version of a context name. */
 export function safeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, "_");

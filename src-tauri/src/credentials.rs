@@ -1,4 +1,5 @@
 use crate::secrets::{BypassError, CredentialContext, MergedVar, ResolvedVar, Vault};
+use std::path::Path;
 use tauri::State;
 
 use crate::agent;
@@ -65,31 +66,25 @@ pub fn rename_credential_context(
     if trimmed.is_empty() {
         return Err("Context name cannot be empty".to_string());
     }
-    let result = with_vault(&state, |v| v.rename_context(&old_name, trimmed));
-    if result.is_ok() {
-        // Keep the active/priority lists in sync so they do not dangle.
-        if let Ok(mut cfg) = state.config.lock() {
-            cfg.rename_credential(&old_name, trimmed);
-            let _ = crate::storage::save_config(&cfg);
-        }
-        agent::bump_gen(&state);
+    with_vault(&state, |v| v.rename_context(&old_name, trimmed))?;
+    // Keep the active/priority lists in sync so they do not dangle.
+    if let Ok(mut cfg) = state.config.lock() {
+        cfg.rename_credential(&old_name, trimmed);
+        let _ = crate::storage::save_config(&cfg);
     }
-    result
+    agent::publish(&state)
 }
 
 /// Deletes a credential context and all of its variables.
 #[tauri::command]
 pub fn delete_credential_context(state: State<AppState>, name: String) -> Result<(), String> {
-    let result = with_vault(&state, |v| v.delete_context(&name));
-    if result.is_ok() {
-        // Drop the context from the active/priority lists.
-        if let Ok(mut cfg) = state.config.lock() {
-            cfg.forget_credential(&name);
-            let _ = crate::storage::save_config(&cfg);
-        }
-        agent::bump_gen(&state);
+    with_vault(&state, |v| v.delete_context(&name))?;
+    // Drop the context from the active/priority lists.
+    if let Ok(mut cfg) = state.config.lock() {
+        cfg.forget_credential(&name);
+        let _ = crate::storage::save_config(&cfg);
     }
-    result
+    agent::publish(&state)
 }
 
 /// Lists the variable keys of a context (values are not returned).
@@ -141,11 +136,22 @@ pub fn set_credential_var(
     key: String,
     value: String,
 ) -> Result<(), String> {
-    let result = with_vault(&state, |v| v.set_var(&context, &key, &value));
-    if result.is_ok() {
-        agent::bump_gen(&state);
-    }
-    result
+    with_vault(&state, |v| v.set_var(&context, &key, &value))?;
+    agent::publish(&state)
+}
+
+/// Stores the file at `path`, encrypted, as a variable of a context. Creates the
+/// variable or replaces its content. Rust reads the file so binary formats work;
+/// the original is left untouched.
+#[tauri::command]
+pub fn set_credential_file(
+    state: State<AppState>,
+    context: String,
+    key: String,
+    path: String,
+) -> Result<(), String> {
+    with_vault(&state, |v| v.set_file(&context, key.trim(), Path::new(&path)))?;
+    agent::publish(&state)
 }
 
 /// Removes a variable from a context.
@@ -155,9 +161,6 @@ pub fn delete_credential_var(
     context: String,
     key: String,
 ) -> Result<(), String> {
-    let result = with_vault(&state, |v| v.delete_var(&context, &key));
-    if result.is_ok() {
-        agent::bump_gen(&state);
-    }
-    result
+    with_vault(&state, |v| v.delete_var(&context, &key))?;
+    agent::publish(&state)
 }

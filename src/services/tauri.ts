@@ -177,6 +177,15 @@ export async function setCredentialVar(
   return invoke("set_credential_var", { context, key, value });
 }
 
+/** Stores the file at `path`, encrypted, as a variable of the context. */
+export async function setCredentialFile(
+  context: string,
+  key: string,
+  path: string
+): Promise<void> {
+  return invoke("set_credential_file", { context, key, path });
+}
+
 export async function deleteCredentialVar(
   context: string,
   key: string
