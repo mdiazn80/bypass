@@ -51,9 +51,7 @@ pub fn merge(contexts: &[(String, BTreeMap<String, String>)]) -> Vec<MergedVar> 
     resolve_all(&templates)
         .into_iter()
         .map(|r| {
-            let (source, shadowed) = sources
-                .remove(&r.key)
-                .expect("every template has a source");
+            let (source, shadowed) = sources.remove(&r.key).expect("every template has a source");
             MergedVar {
                 key: r.key,
                 raw: r.raw,
@@ -114,7 +112,10 @@ mod tests {
     fn reference_follows_the_winning_definition() {
         let all = merge(&[
             ctx("override", &[("HOST", "staging.example.com")]),
-            ctx("app", &[("HOST", "example.com"), ("URL", "https://{$HOST}/")]),
+            ctx(
+                "app",
+                &[("HOST", "example.com"), ("URL", "https://{$HOST}/")],
+            ),
         ]);
         assert_eq!(find(&all, "URL").value, "https://staging.example.com/");
     }

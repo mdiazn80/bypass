@@ -222,7 +222,6 @@ impl HybridBackend {
             })
             .collect())
     }
-
 }
 
 impl SecretBackend for HybridBackend {
@@ -242,12 +241,15 @@ impl SecretBackend for HybridBackend {
     fn set(&self, context: &str, key: &str, value: &str) -> Result<(), BypassError> {
         let mut data = self.load()?;
         let ts = now();
-        let entry = data.contexts.entry(context.to_string()).or_insert_with(|| ContextEntry {
-            description: String::new(),
-            created_at: ts.clone(),
-            updated_at: ts.clone(),
-            ..ContextEntry::default()
-        });
+        let entry = data
+            .contexts
+            .entry(context.to_string())
+            .or_insert_with(|| ContextEntry {
+                description: String::new(),
+                created_at: ts.clone(),
+                updated_at: ts.clone(),
+                ..ContextEntry::default()
+            });
         entry.files.remove(key);
         entry.vars.insert(key.to_string(), value.to_string());
         entry.updated_at = ts;
@@ -261,7 +263,10 @@ impl SecretBackend for HybridBackend {
             .get_mut(context)
             .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
         if entry.vars.remove(key).is_none() && entry.files.remove(key).is_none() {
-            return Err(BypassError::KeyNotFound(key.to_string(), context.to_string()));
+            return Err(BypassError::KeyNotFound(
+                key.to_string(),
+                context.to_string(),
+            ));
         }
         entry.updated_at = now();
         self.store(&data)
@@ -273,7 +278,12 @@ impl SecretBackend for HybridBackend {
             .contexts
             .get(context)
             .ok_or_else(|| BypassError::ContextNotFound(context.to_string()))?;
-        let mut keys: Vec<String> = entry.vars.keys().chain(entry.files.keys()).cloned().collect();
+        let mut keys: Vec<String> = entry
+            .vars
+            .keys()
+            .chain(entry.files.keys())
+            .cloned()
+            .collect();
         keys.sort();
         Ok(keys)
     }
@@ -289,7 +299,11 @@ mod tests {
     }
 
     fn temp_dir(tag: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("bypass_secrets_test_{}_{}", tag, std::process::id()));
+        let dir = std::env::temp_dir().join(format!(
+            "bypass_secrets_test_{}_{}",
+            tag,
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         dir
@@ -316,7 +330,12 @@ mod tests {
         assert_eq!(backend.list_keys("dev").unwrap(), vec!["A", "B"]);
         backend.delete("dev", "A").unwrap();
         assert_eq!(backend.list_keys("dev").unwrap(), vec!["B"]);
-        let names: Vec<String> = backend.context_meta().unwrap().into_iter().map(|c| c.name).collect();
+        let names: Vec<String> = backend
+            .context_meta()
+            .unwrap()
+            .into_iter()
+            .map(|c| c.name)
+            .collect();
         assert_eq!(names, vec!["dev"]);
         fs::remove_dir_all(&dir).ok();
     }

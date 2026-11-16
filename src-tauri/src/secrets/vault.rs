@@ -30,7 +30,10 @@ impl Vault {
     /// Builds a vault around an already-constructed backend (tests only).
     #[cfg(test)]
     pub fn with_backend(backend: HybridBackend, files_root: PathBuf) -> Self {
-        Self { backend, files_root }
+        Self {
+            backend,
+            files_root,
+        }
     }
 
     // --- Context metadata ---------------------------------------------------
@@ -71,7 +74,10 @@ impl Vault {
         let entry = self.backend.entry(context)?;
         let mut resolved = resolve_all(&self.layer(&entry));
         for var in &mut resolved {
-            var.file = entry.files.get(&var.key).map(|f| self.file_meta(&var.key, f));
+            var.file = entry
+                .files
+                .get(&var.key)
+                .map(|f| self.file_meta(&var.key, f));
         }
         Ok(resolved)
     }
@@ -107,7 +113,9 @@ impl Vault {
             .file_name()
             .and_then(|n| n.to_str())
             .filter(|n| files::is_valid_filename(n))
-            .ok_or_else(|| BypassError::Invalid(format!("unusable file name: {}", path.display())))?;
+            .ok_or_else(|| {
+                BypassError::Invalid(format!("unusable file name: {}", path.display()))
+            })?;
         let metadata = fs::metadata(path)?;
         if !metadata.is_file() {
             return Err(BypassError::Invalid(format!(
@@ -172,8 +180,8 @@ impl Vault {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::crypto::KEY_LEN;
+    use super::*;
     use std::fs;
 
     fn vault(dir: &std::path::Path) -> Vault {

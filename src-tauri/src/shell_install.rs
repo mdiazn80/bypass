@@ -85,7 +85,12 @@ fn rc_path(shell: DetectedShell) -> Option<PathBuf> {
     match shell {
         DetectedShell::Zsh => Some(home.join(".zshrc")),
         DetectedShell::Bash => Some(home.join(".bashrc")),
-        DetectedShell::Fish => Some(home.join(".config").join("fish").join("conf.d").join("bypass.fish")),
+        DetectedShell::Fish => Some(
+            home.join(".config")
+                .join("fish")
+                .join("conf.d")
+                .join("bypass.fish"),
+        ),
         DetectedShell::Powershell => powershell_profile_path(),
     }
 }
