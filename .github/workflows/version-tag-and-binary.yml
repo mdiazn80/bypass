@@ -3,10 +3,13 @@ name: Version tag and binary
 # Runs when a pull request into `main` is merged (after approval), from any branch.
 # Can also be run manually (Actions → Run workflow).
 #
-# One macOS job, in this order, so nothing is published when a check fails:
-# 1. Lint and tests (`.github/actions/checks`).
-# 2. Version bump commit and tag, pushed to the target branch.
-# 3. Build, sign and notarize from that same checkout, then upload:
+# One macOS job, in this order, so nothing is published when a step fails:
+# 1. Write the next version into the working tree (no commit, no tag yet).
+# 2. Lint, test and compile the release workspace (`.github/actions/checks`).
+# 3. Bundle, sign and notarize that same release build. The frontend dist and
+#    target/release are reused; dependencies are not compiled again.
+# 4. Commit and push the version tag only after the signed build exists.
+# 5. Upload:
 #    - macOS Apple Silicon (signed + notarized DMG + app.tar.gz for updater) — arm64
 #    - latest.json — updater manifest consumed by tauri-plugin-updater (separate job)
 #
@@ -66,23 +69,28 @@ jobs:
         with:
           workspaces: .
 
-      # Before tagging: a failure here leaves no release commit or tag behind.
-      # Signing secrets are not in the environment yet, so dependency install
-      # scripts and tests never see them.
-      - name: Lint and test
-        uses: ./.github/actions/checks
+      # Before any release compile. The checks step builds target/release.
+      - name: protobuf
+        run: brew install protobuf
 
-      - name: Create and push tag
+      # Version files change the crate fingerprint, so they are written before
+      # compiling. A failure below still leaves no commit or tag: publish runs
+      # only after the signed build. Signing secrets are not in the environment
+      # yet, so dependency install scripts and tests never see them.
+      - name: Prepare version
         id: version_tag
         env:
           TZ: UTC
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-        run: bash scripts/ci-tag-version-push.sh
+        run: bash scripts/ci-tag-version-push.sh prepare
 
-      # The checkout is now at the tagged release commit.
+      - name: Lint and test
+        uses: ./.github/actions/checks
+
+      # Bundles the release binaries just compiled. CI_REUSE_FRONTEND skips the
+      # second pnpm install and the second frontend build.
       - name: Build, sign, notarize, normalize DMG
         env:
+          CI_REUSE_FRONTEND: "1"
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -92,6 +100,14 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: bash scripts/ci-macos-release-signed-only.sh
+
+      - name: Create and push tag
+        env:
+          TZ: UTC
+          TAG: ${{ steps.version_tag.outputs.tag }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: bash scripts/ci-tag-version-push.sh publish
 
       - name: Prepare macOS updater artifact
         env:

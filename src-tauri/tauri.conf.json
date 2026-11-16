@@ -7,7 +7,7 @@
   "build": {
     "beforeDevCommand": "cargo build -p bypass-shell && pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "node scripts/frontend-build.mjs",
     "frontendDist": "../dist"
   },
   "app": {

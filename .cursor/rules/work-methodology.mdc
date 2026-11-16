@@ -24,7 +24,7 @@ Version must be kept in sync across **4 files** — always update all of them to
 - `src-tauri/Cargo.toml`
 - `src-tauri/tauri.conf.json`
 
-Use the CI script `scripts/ci-tag-version-push.sh` to bump; avoid manual edits.
+Use the CI script `scripts/ci-tag-version-push.sh` to bump (`prepare` writes the version, `publish` commits and pushes); avoid manual edits.
 
 ## Commit Messages
 
