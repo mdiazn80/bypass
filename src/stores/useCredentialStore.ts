@@ -44,6 +44,7 @@ interface CredentialStore {
   setVars: (entries: { key: string; value: string }[]) => Promise<void>;
   setFile: (key: string, path: string) => Promise<void>;
   deleteVar: (key: string) => Promise<void>;
+  setError: (error: string | null) => void;
   clearError: () => void;
 }
 
@@ -217,6 +218,8 @@ export const useCredentialStore = create<CredentialStore>((set, get) => ({
       set({ error: String(err) });
     }
   },
+
+  setError: (error) => set({ error }),
 
   clearError: () => set({ error: null }),
 }));

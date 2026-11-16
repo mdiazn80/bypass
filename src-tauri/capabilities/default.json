@@ -14,6 +14,7 @@
     "autostart:default",
     "dialog:default",
     "fs:default",
+    "fs:allow-write-text-file",
     "updater:default",
     "process:default"
   ]

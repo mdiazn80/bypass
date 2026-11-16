@@ -73,7 +73,7 @@ export function highlightHosts(text: string, issueLines?: Set<number>): React.Re
 }
 
 export default function ContextEditor() {
-  const { contexts, selectedId, systemHosts } = useContextStore();
+  const { contexts, selectedId, systemHosts, setError } = useContextStore();
   const selected = contexts.find((c) => c.id === selectedId);
 
   if (selectedId === SYSTEM_HOSTS_ID) {
@@ -87,6 +87,7 @@ export default function ContextEditor() {
               filterName="Hosts file"
               extensions={["hosts", "txt"]}
               getContent={() => systemHosts}
+              onError={setError}
               title="Save a copy of the system hosts file"
             />
             <span className="editor-status">Read-only</span>
@@ -110,7 +111,7 @@ export default function ContextEditor() {
 }
 
 function HostsContextEditor({ selected }: { selected: Context }) {
-  const { contexts, update, togglingId } = useContextStore();
+  const { contexts, update, togglingId, setError } = useContextStore();
   const toggling = togglingId === selected.id;
   // Every edit to an active context rewrites the system hosts file, which
   // prompts for administrator credentials, so editing is only allowed while
@@ -235,6 +236,7 @@ function HostsContextEditor({ selected }: { selected: Context }) {
               filterName="Hosts file"
               extensions={["hosts", "txt"]}
               getContent={() => (content.endsWith("\n") ? content : content + "\n")}
+              onError={setError}
               title="Export these entries as a hosts file"
             />
             <span className={`editor-status ${selected.enabled ? "enabled" : ""}`}>
