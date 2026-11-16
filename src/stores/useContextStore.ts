@@ -33,6 +33,7 @@ interface ContextStore {
   /** Moves the context one position up (`-1`) or down (`+1`). */
   move: (id: string, delta: -1 | 1) => Promise<void>;
   select: (id: string | null) => void;
+  setError: (error: string | null) => void;
   clearError: () => void;
 }
 
@@ -171,6 +172,10 @@ export const useContextStore = create<ContextStore>((set, get) => ({
 
   select: (id: string | null) => {
     set({ selectedId: id });
+  },
+
+  setError: (error) => {
+    set({ error });
   },
 
   clearError: () => {

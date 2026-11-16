@@ -12,6 +12,20 @@ interface ExportButtonProps {
   /** Produces the file contents; called once the user picks a location. */
   getContent: () => string;
   title?: string;
+  /**
+   * Reports a failed write. `null` means the file was written, so a previous
+   * error can be cleared. Cancelling the dialog reports nothing.
+   */
+  onError: (message: string | null) => void;
+}
+
+function errorMessage(err: unknown): string {
+  if (typeof err === "string" && err) return err;
+  if (err instanceof Error && err.message) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof err.message === "string") {
+    return err.message;
+  }
+  return "Could not save the file";
 }
 
 const FEEDBACK_MS = 1500;
@@ -23,6 +37,7 @@ export default function ExportButton({
   extensions,
   getContent,
   title = "Export to file",
+  onError,
 }: ExportButtonProps) {
   const [saved, setSaved] = useState(false);
 
@@ -32,12 +47,14 @@ export default function ExportButton({
         defaultPath: defaultName,
         filters: [{ name: filterName, extensions }],
       });
+      // The save dialog resolves to null when the user cancels.
       if (!path) return;
       await writeTextFile(path, getContent());
+      onError(null);
       setSaved(true);
       window.setTimeout(() => setSaved(false), FEEDBACK_MS);
-    } catch {
-      // Cancelled.
+    } catch (err) {
+      onError(`Export failed: ${errorMessage(err)}`);
     }
   };
 

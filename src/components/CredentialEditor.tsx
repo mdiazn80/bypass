@@ -36,7 +36,7 @@ function baseName(path: string): string {
  * contexts layered by priority. The credential counterpart of System Hosts.
  */
 function ActiveVarsSummary() {
-  const { contexts, activeVars, selectContext } = useCredentialStore();
+  const { contexts, activeVars, selectContext, setError } = useCredentialStore();
   // The fallback stays outside the selector: returning a new `[]` from it makes
   // the store look changed on every read, which loops until React gives up.
   const activeContexts = useConfigStore((s) => s.shellStatus?.active_contexts) ?? [];
@@ -53,6 +53,7 @@ function ActiveVarsSummary() {
             filterName="Env file"
             extensions={["env", "txt"]}
             getContent={() => toEnvFile(activeVars)}
+            onError={setError}
             title="Export the merged variables as KEY=value. File variables export their path, not their content"
           />
           <span className="editor-status">Read-only</span>
@@ -122,7 +123,7 @@ function ActiveVarsSummary() {
 }
 
 export default function CredentialEditor() {
-  const { contexts, selectedName, vars, updateContext, renameContext, setVar, setVars, setFile, deleteVar } =
+  const { contexts, selectedName, vars, updateContext, renameContext, setVar, setVars, setFile, deleteVar, setError } =
     useCredentialStore();
 
   const selected = contexts.find((c) => c.name === selectedName);
@@ -340,6 +341,7 @@ export default function CredentialEditor() {
               // Templates are exported as stored, `{$VAR}` references included,
               // so the file re-imports without freezing them.
               getContent={() => toEnvFile(vars)}
+              onError={setError}
               title="Export these variables as KEY=value. File variables export their path, not their content"
             />
           </div>
