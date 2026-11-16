@@ -53,7 +53,9 @@ pub(crate) fn is_valid_filename(name: &str) -> bool {
     !name.is_empty()
         && name != "."
         && name != ".."
-        && !name.chars().any(|c| c == '/' || c == '\\' || c.is_control())
+        && !name
+            .chars()
+            .any(|c| c == '/' || c == '\\' || c.is_control())
 }
 
 /// Picks the file that owns each key across `entries` (highest priority first).
@@ -235,7 +237,10 @@ mod tests {
 
     fn entry(vars: &[&str], files: &[(&str, FileVar)]) -> ContextEntry {
         ContextEntry {
-            vars: vars.iter().map(|k| (k.to_string(), "v".to_string())).collect(),
+            vars: vars
+                .iter()
+                .map(|k| (k.to_string(), "v".to_string()))
+                .collect(),
             files: files
                 .iter()
                 .map(|(k, f)| (k.to_string(), f.clone()))
@@ -308,8 +313,14 @@ mod tests {
     #[test]
     fn highest_priority_file_wins() {
         let entries = vec![
-            ("prod".to_string(), entry(&[], &[("K", file_var("prod.yaml", b"p"))])),
-            ("dev".to_string(), entry(&[], &[("K", file_var("dev.yaml", b"d"))])),
+            (
+                "prod".to_string(),
+                entry(&[], &[("K", file_var("prod.yaml", b"p"))]),
+            ),
+            (
+                "dev".to_string(),
+                entry(&[], &[("K", file_var("dev.yaml", b"d"))]),
+            ),
         ];
         let files = winning_files(&entries).unwrap();
         assert_eq!(files.len(), 1);
@@ -321,7 +332,10 @@ mod tests {
     fn higher_priority_plain_variable_shadows_a_file() {
         let entries = vec![
             ("override".to_string(), entry(&["K"], &[])),
-            ("base".to_string(), entry(&[], &[("K", file_var("k", b"x"))])),
+            (
+                "base".to_string(),
+                entry(&[], &[("K", file_var("k", b"x"))]),
+            ),
         ];
         assert!(winning_files(&entries).unwrap().is_empty());
     }

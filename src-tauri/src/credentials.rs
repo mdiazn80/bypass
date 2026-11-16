@@ -89,7 +89,10 @@ pub fn delete_credential_context(state: State<AppState>, name: String) -> Result
 
 /// Lists the variable keys of a context (values are not returned).
 #[tauri::command]
-pub fn list_credential_vars(state: State<AppState>, context: String) -> Result<Vec<String>, String> {
+pub fn list_credential_vars(
+    state: State<AppState>,
+    context: String,
+) -> Result<Vec<String>, String> {
     with_vault(&state, |v| v.list_keys(&context))
 }
 
@@ -150,7 +153,9 @@ pub fn set_credential_file(
     key: String,
     path: String,
 ) -> Result<(), String> {
-    with_vault(&state, |v| v.set_file(&context, key.trim(), Path::new(&path)))?;
+    with_vault(&state, |v| {
+        v.set_file(&context, key.trim(), Path::new(&path))
+    })?;
     agent::publish(&state)
 }
 

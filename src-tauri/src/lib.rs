@@ -81,7 +81,8 @@ pub fn run() {
 
             hosts_watch::start(app.handle().clone());
 
-            let window = app.get_webview_window("main")
+            let window = app
+                .get_webview_window("main")
                 .ok_or("main window not found")?;
 
             // The window starts hidden (visible: false in tauri.conf.json).

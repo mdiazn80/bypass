@@ -51,14 +51,20 @@ pub struct SystemInfo {
 }
 
 fn machine_info() -> MachineInfo {
-    let mut sys = System::new();
-    sys.refresh_memory();
-    sys.refresh_cpu_list(sysinfo::CpuRefreshKind::nothing());
+    // sysinfo 0.40 reports a read failure as `Err` instead of an empty value.
+    // The dashboard still renders; missing facts stay as "unknown" or zero.
+    let mut sys = System::new().ok();
+    if let Some(system) = sys.as_mut() {
+        system.refresh_memory();
+        system.refresh_cpu_list(sysinfo::CpuRefreshKind::nothing());
+    }
+    let cpus = sys.as_ref().map(System::cpus).unwrap_or(&[]);
 
     // `long_os_version` is the marketing name ("macOS 26.6.2"); `name` alone is
     // the kernel's ("Darwin"), which is not what a user expects to read here.
     let os = System::long_os_version()
-        .or_else(|| match (System::name(), System::os_version()) {
+        .ok()
+        .or_else(|| match (System::name().ok(), System::os_version().ok()) {
             (Some(name), Some(version)) => Some(format!("{name} {version}")),
             (Some(name), None) => Some(name),
             (None, Some(version)) => Some(version),
@@ -67,20 +73,19 @@ fn machine_info() -> MachineInfo {
         .unwrap_or_else(|| std::env::consts::OS.to_string());
 
     MachineInfo {
-        hostname: System::host_name().unwrap_or_else(|| "unknown".to_string()),
+        hostname: System::host_name().unwrap_or_else(|_| "unknown".to_string()),
         os,
-        kernel_version: System::kernel_version().unwrap_or_else(|| "unknown".to_string()),
+        kernel_version: System::kernel_version().unwrap_or_else(|_| "unknown".to_string()),
         arch: System::cpu_arch(),
-        cpu_brand: sys
-            .cpus()
+        cpu_brand: cpus
             .first()
             .map(|c| c.brand().trim().to_string())
             .filter(|b| !b.is_empty())
             .unwrap_or_else(|| "unknown".to_string()),
-        cpu_count: sys.cpus().len(),
-        total_memory: sys.total_memory(),
-        used_memory: sys.used_memory(),
-        uptime: System::uptime(),
+        cpu_count: cpus.len(),
+        total_memory: sys.as_ref().map(System::total_memory).unwrap_or(0),
+        used_memory: sys.as_ref().map(System::used_memory).unwrap_or(0),
+        uptime: System::uptime().unwrap_or(0),
     }
 }
 
@@ -135,7 +140,10 @@ const IPV6_ENDPOINTS: [&str; 2] = ["https://api6.ipify.org", "https://ipv6.icanh
 /// Tries each endpoint in order and returns the first address that parses.
 /// Returns `None` rather than an error: no IPv6 connectivity is a normal
 /// result, not a failure the user needs to see.
-async fn fetch_public_ip(client: reqwest::Client, endpoints: &'static [&'static str]) -> Option<String> {
+async fn fetch_public_ip(
+    client: reqwest::Client,
+    endpoints: &'static [&'static str],
+) -> Option<String> {
     for url in endpoints {
         let Ok(response) = client.get(*url).send().await else {
             continue;

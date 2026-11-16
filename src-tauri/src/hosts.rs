@@ -155,8 +155,8 @@ fn write_hosts_file(content: &str) -> Result<(), String> {
     let temp_str = temp_path.to_string_lossy().to_string();
 
     {
-        let mut f =
-            fs::File::create(&temp_path).map_err(|e| format!("Failed to create temp file: {}", e))?;
+        let mut f = fs::File::create(&temp_path)
+            .map_err(|e| format!("Failed to create temp file: {}", e))?;
         f.write_all(content.as_bytes())
             .map_err(|e| format!("Failed to write temp file: {}", e))?;
     }
@@ -251,7 +251,10 @@ mod tests {
     #[test]
     fn block_is_empty_when_no_context_is_enabled() {
         assert_eq!(build_managed_block(&[]), "");
-        assert_eq!(build_managed_block(&[ctx("dev", "127.0.0.1 a.local", false)]), "");
+        assert_eq!(
+            build_managed_block(&[ctx("dev", "127.0.0.1 a.local", false)]),
+            ""
+        );
     }
 
     #[test]
@@ -317,7 +320,10 @@ mod tests {
     #[test]
     fn disabling_everything_restores_the_original_file() {
         let applied = compose(SYSTEM, &[ctx("dev", "127.0.0.1 a.local", true)]);
-        assert_eq!(compose(&applied, &[ctx("dev", "127.0.0.1 a.local", false)]), SYSTEM);
+        assert_eq!(
+            compose(&applied, &[ctx("dev", "127.0.0.1 a.local", false)]),
+            SYSTEM
+        );
     }
 
     #[test]
@@ -385,21 +391,29 @@ mod tests {
 
     #[test]
     fn context_names_lose_control_characters_and_surrounding_space() {
-        assert_eq!(clean_context_name("  Dev\n9.9.9.9 evil\t ").unwrap(), "Dev 9.9.9.9 evil");
+        assert_eq!(
+            clean_context_name("  Dev\n9.9.9.9 evil\t ").unwrap(),
+            "Dev 9.9.9.9 evil"
+        );
         assert!(clean_context_name(" \n\t ").is_err());
     }
 
     #[test]
     fn a_stored_name_with_a_newline_cannot_inject_an_entry() {
         let block = build_managed_block(&[ctx("a\n9.9.9.9 injected", "1.1.1.1 x", true)]);
-        assert!(block.lines().all(|line| line.starts_with('#') || line == "1.1.1.1 x"));
+        assert!(block
+            .lines()
+            .all(|line| line.starts_with('#') || line == "1.1.1.1 x"));
     }
 
     #[test]
     fn in_sync_after_applying_and_when_nothing_is_enabled() {
         let contexts = [ctx("dev", "127.0.0.1 a.local", true)];
         assert!(is_in_sync(&compose(SYSTEM, &contexts), &contexts));
-        assert!(is_in_sync(SYSTEM, &[ctx("dev", "127.0.0.1 a.local", false)]));
+        assert!(is_in_sync(
+            SYSTEM,
+            &[ctx("dev", "127.0.0.1 a.local", false)]
+        ));
     }
 
     #[test]
@@ -414,8 +428,14 @@ mod tests {
         let contexts = [ctx("dev", "127.0.0.1 a.local", true)];
         let applied = compose(SYSTEM, &contexts);
         assert!(!is_in_sync(SYSTEM, &contexts));
-        assert!(!is_in_sync(&applied.replace("a.local", "b.local"), &contexts));
-        assert!(!is_in_sync(&applied, &[ctx("dev", "127.0.0.1 a.local", false)]));
+        assert!(!is_in_sync(
+            &applied.replace("a.local", "b.local"),
+            &contexts
+        ));
+        assert!(!is_in_sync(
+            &applied,
+            &[ctx("dev", "127.0.0.1 a.local", false)]
+        ));
         let unterminated = applied.replace("# ===== BYPASS MANAGED END =====", "");
         assert!(!is_in_sync(&unterminated, &contexts));
     }

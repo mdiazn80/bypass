@@ -88,7 +88,10 @@ fn expand<'a>(
             i += consumed;
             out.push_str(&expand_ref(name, vars, stack, issue));
             if out.len() > MAX_LEN {
-                record(issue, format!("value of {} is too large to expand", stack[0]));
+                record(
+                    issue,
+                    format!("value of {} is too large to expand", stack[0]),
+                );
                 out.truncate(MAX_LEN);
                 return out;
             }
@@ -186,7 +189,10 @@ mod tests {
 
     #[test]
     fn expands_a_single_reference() {
-        let r = resolve(&[("APP_PATH", "/opt/app"), ("CFG", "{$APP_PATH}/config")], "CFG");
+        let r = resolve(
+            &[("APP_PATH", "/opt/app"), ("CFG", "{$APP_PATH}/config")],
+            "CFG",
+        );
         assert_eq!(r.value, "/opt/app/config");
         assert!(r.issue.is_none());
     }
@@ -194,10 +200,7 @@ mod tests {
     #[test]
     fn expands_chained_references_regardless_of_order() {
         // C depends on B depends on A, and C sorts before both.
-        let r = resolve(
-            &[("C", "{$B}/c"), ("B", "{$A}/b"), ("A", "/a")],
-            "C",
-        );
+        let r = resolve(&[("C", "{$B}/c"), ("B", "{$A}/b"), ("A", "/a")], "C");
         assert_eq!(r.value, "/a/b/c");
         assert!(r.issue.is_none());
     }
@@ -205,7 +208,11 @@ mod tests {
     #[test]
     fn expands_several_references_in_one_value() {
         let r = resolve(
-            &[("H", "example.com"), ("P", "8080"), ("URL", "https://{$H}:{$P}/api")],
+            &[
+                ("H", "example.com"),
+                ("P", "8080"),
+                ("URL", "https://{$H}:{$P}/api"),
+            ],
             "URL",
         );
         assert_eq!(r.value, "https://example.com:8080/api");
@@ -233,7 +240,10 @@ mod tests {
 
     #[test]
     fn malformed_references_are_left_verbatim() {
-        let r = resolve(&[("A", "1"), ("T", "{$unclosed and {$FOO-BAR} and {$}")], "T");
+        let r = resolve(
+            &[("A", "1"), ("T", "{$unclosed and {$FOO-BAR} and {$}")],
+            "T",
+        );
         assert_eq!(r.value, "{$unclosed and {$FOO-BAR} and {$}");
         assert!(r.issue.is_none());
     }

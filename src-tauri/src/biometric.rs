@@ -14,15 +14,10 @@ let available = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometri
 if available { print("true") } else { print("false") }
 "#;
 
-    let output = Command::new("swift")
-        .arg("-e")
-        .arg(script)
-        .output();
+    let output = Command::new("swift").arg("-e").arg(script).output();
 
     match output {
-        Ok(o) if o.status.success() => {
-            String::from_utf8_lossy(&o.stdout).trim() == "true"
-        }
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim() == "true",
         _ => false,
     }
 }
@@ -81,7 +76,10 @@ exit(authSuccess ? 0 : 2)
         Some(0) => Ok(()),
         Some(2) => {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("Biometric authentication failed: {}", stderr.trim()))
+            Err(format!(
+                "Biometric authentication failed: {}",
+                stderr.trim()
+            ))
         }
         _ => {
             let stderr = String::from_utf8_lossy(&output.stderr);

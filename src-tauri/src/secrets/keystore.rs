@@ -15,8 +15,8 @@ const ACCOUNT: &str = "master-key";
 /// be reached (e.g. Linux without a running Secret Service), so callers can
 /// fall back to a passphrase-derived key.
 pub fn load_or_create_master_key() -> Result<Zeroizing<[u8; KEY_LEN]>, BypassError> {
-    let entry = Entry::new(SERVICE, ACCOUNT)
-        .map_err(|e| BypassError::BackendUnavailable(e.to_string()))?;
+    let entry =
+        Entry::new(SERVICE, ACCOUNT).map_err(|e| BypassError::BackendUnavailable(e.to_string()))?;
 
     match entry.get_password() {
         Ok(encoded) => decode_key(&encoded),
