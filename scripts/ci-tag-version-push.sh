@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Canonical release id: YY.M.X (UTC) — M is month 1–12 (one or two digits), X is sequence within that month (resets when M or YY changes).
 # Git tag, VERSION, src-tauri/Cargo.toml, src-tauri/tauri.conf.json, and package.json use the same version string.
-# Requires: TZ (e.g. UTC), GITHUB_OUTPUT, GITHUB_EVENT_NAME, GITHUB_REF_NAME.
+#
+# Two phases, so the release binary can be compiled once with the version already
+# in the tree and the tag is pushed only after that build succeeds:
+#   prepare — write the version files and print the tag. Does not commit or push.
+#   publish — commit, tag and push the version `prepare` already wrote.
+# Requires: TZ (e.g. UTC) and GITHUB_OUTPUT. `publish` also needs TAG,
+# GITHUB_EVENT_NAME and GITHUB_REF_NAME.
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -9,42 +15,59 @@ REPO_ROOT=$(cd "${SCRIPT_DIR}/.." && pwd)
 cd "${REPO_ROOT}"
 
 : "${GITHUB_OUTPUT:?GITHUB_OUTPUT must be set}"
-: "${GITHUB_EVENT_NAME:?GITHUB_EVENT_NAME must be set}"
-: "${GITHUB_REF_NAME:?GITHUB_REF_NAME must be set}"
 
-YY=$(date +%y)
-M=$((10#$(date +%m)))
-PREFIX="${YY}.${M}"
-git fetch --tags --force
+MODE="${1:-}"
+case "${MODE}" in
+  prepare | publish) ;;
+  *)
+    echo "usage: ci-tag-version-push.sh prepare|publish" >&2
+    exit 1
+    ;;
+esac
 
-MAX=0
-while IFS= read -r t; do
-  [ -z "${t:-}" ] && continue
-  case "${t}" in
-    "${PREFIX}".*)
-      SEQ="${t#"${PREFIX}".}"
-      if [[ "${SEQ}" =~ ^[0-9]+$ ]]; then
-        SEQ_NUM=$((10#$SEQ))
-        if [ "${SEQ_NUM}" -gt "${MAX}" ]; then
-          MAX="${SEQ_NUM}"
+if [ "${MODE}" = "publish" ]; then
+  : "${TAG:?TAG must be the version printed by prepare}"
+  : "${GITHUB_EVENT_NAME:?GITHUB_EVENT_NAME must be set}"
+  : "${GITHUB_REF_NAME:?GITHUB_REF_NAME must be set}"
+  CURRENT=$(tr -d '[:space:]' < VERSION)
+  if [ "${CURRENT}" != "${TAG}" ]; then
+    echo "VERSION is '${CURRENT}', expected '${TAG}' from prepare." >&2
+    exit 1
+  fi
+else
+  YY=$(date +%y)
+  M=$((10#$(date +%m)))
+  PREFIX="${YY}.${M}"
+  git fetch --tags --force
+
+  MAX=0
+  while IFS= read -r t; do
+    [ -z "${t:-}" ] && continue
+    case "${t}" in
+      "${PREFIX}".*)
+        SEQ="${t#"${PREFIX}".}"
+        if [[ "${SEQ}" =~ ^[0-9]+$ ]]; then
+          SEQ_NUM=$((10#$SEQ))
+          if [ "${SEQ_NUM}" -gt "${MAX}" ]; then
+            MAX="${SEQ_NUM}"
+          fi
         fi
-      fi
-      ;;
-  esac
-done < <(git tag -l "${PREFIX}.*")
+        ;;
+    esac
+  done < <(git tag -l "${PREFIX}.*")
 
-NEXT=$((MAX + 1))
-TAG="${PREFIX}.${NEXT}"
-echo "Next tag: ${TAG} (prefix ${PREFIX}, max existing seq ${MAX})"
+  NEXT=$((MAX + 1))
+  TAG="${PREFIX}.${NEXT}"
+  echo "Next tag: ${TAG} (prefix ${PREFIX}, max existing seq ${MAX})"
 
-if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
-  echo "Tag ${TAG} already exists locally; aborting."
-  exit 1
-fi
+  if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+    echo "Tag ${TAG} already exists locally; aborting."
+    exit 1
+  fi
 
-echo "VERSION / manifests / tag: ${TAG}"
-export RELEASE_VER="${TAG}"
-python3 <<'PY'
+  echo "VERSION / manifests / tag: ${TAG}"
+  export RELEASE_VER="${TAG}"
+  python3 <<'PY'
 import os
 import re
 
@@ -90,6 +113,10 @@ bump_cargo("src-tauri/Cargo.toml")
 bump_json_version("src-tauri/tauri.conf.json")
 bump_json_version("package.json")
 PY
+
+  echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+  exit 0
+fi
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

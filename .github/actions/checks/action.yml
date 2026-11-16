@@ -1,7 +1,9 @@
 name: Lint and test
 description: >
-  ESLint, Vitest, frontend build, Clippy and Rust tests. Expects pnpm, Node.js
-  and a Rust toolchain with Clippy to be set up by the calling job.
+  ESLint, Vitest, frontend build, Clippy and Rust tests, then a release build
+  of the workspace. Release (not debug) so the signing step can bundle
+  target/release instead of compiling the workspace again. Expects pnpm,
+  Node.js and a Rust toolchain with Clippy to be set up by the calling job.
 
 runs:
   using: composite
@@ -24,10 +26,16 @@ runs:
       shell: bash
       run: pnpm build
 
+    # Same profile as `tauri build`, so dependencies land in target/release
+    # and the signing step does not compile them a second time.
     - name: Clippy
       shell: bash
-      run: cargo clippy --workspace --all-targets -- -D warnings
+      run: cargo clippy --workspace --all-targets --release -- -D warnings
 
     - name: Rust tests
       shell: bash
-      run: cargo test --workspace
+      run: cargo test --workspace --release
+
+    - name: Release build
+      shell: bash
+      run: cargo build --release --workspace

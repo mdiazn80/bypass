@@ -27,9 +27,23 @@ test "$(uname -m)" = "arm64"
 
 command -v pnpm >/dev/null
 
-brew install protobuf
+# The release workflow installs protobuf before the checks compile in release.
+# A local run of this script still needs it.
+if ! command -v protoc >/dev/null 2>&1; then
+  brew install protobuf
+fi
 
-pnpm install --frozen-lockfile
+# CI_REUSE_FRONTEND=1: the checks step already installed dependencies, built
+# dist/ and compiled target/release. Skip the install. The frontend hook
+# (scripts/frontend-build.mjs) sees the same variable and does not run
+# `pnpm build` again, and the Tauri config on disk stays unchanged so Cargo
+# can reuse target/release.
+if [ "${CI_REUSE_FRONTEND:-}" = "1" ]; then
+  test -d node_modules
+  test -f dist/index.html
+else
+  pnpm install --frozen-lockfile
+fi
 
 bash scripts/build-shell-sidecar.sh
 pnpm tauri build -c src-tauri/tauri.bundle.conf.json
